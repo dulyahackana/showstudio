@@ -1,0 +1,49 @@
+# Production-shaped local stack: Postgres + studio (API, fleet gateway, editor) +
+# one-shot seed + simulated attraction.  `docker compose up --build`, then open http://localhost:4000
+# Secrets below are demo values; production injects them from a secret manager.
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: studio
+      POSTGRES_PASSWORD: studio-demo-password
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d studio"]
+      interval: 3s
+      retries: 20
+
+  studio:
+    build: { context: ., target: runtime }
+    depends_on: { postgres: { condition: service_healthy } }
+    environment:
+      DATABASE_URL: postgres://postgres:studio-demo-password@postgres:5432/studio
+      AUTH_SECRET: demo-only-auth-secret-0123456789
+      DEVICE_SECRET: demo-only-device-secret-0123456789
+      PROVISIONING_TOKEN: demo-only-provisioning-token
+      DEV_LOGIN: "on" # demo personas; use OIDC in real deployments
+    ports: ["4000:4000"]
+    volumes: [studiodata:/data]
+
+  seed:
+    build: { context: ., target: tools }
+    depends_on: { studio: { condition: service_healthy } }
+    environment: { STUDIO_API_URL: http://studio:4000 }
+    command: ["bun", "scripts/seed.ts"]
+    restart: "no"
+
+  fleet-sim:
+    build: { context: ., target: tools }
+    depends_on: { seed: { condition: service_completed_successfully } }
+    environment:
+      STUDIO_API_URL: http://studio:4000
+      STUDIO_ENVIRONMENT: dragons-lair
+      PROVISIONING_TOKEN: demo-only-provisioning-token
+      FLEET_DATA_DIR: /tmp/fleet
+    command: ["bun", "apps/fleet-sim/src/main.ts", "--quiet"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  studiodata:

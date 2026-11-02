@@ -1,0 +1,2713 @@
+{
+ "description": "Show Studio playback conformance vectors. Times in ms, angles in degrees, colors 0..1.",
+ "tolerance": 0.000001,
+ "motion": [
+  {
+   "name": "linear from home",
+   "home": 0,
+   "keys": [
+    {
+     "t": 1000,
+     "v": 10,
+     "interp": "linear"
+    },
+    {
+     "t": 2000,
+     "v": -10,
+     "interp": "linear"
+    }
+   ],
+   "samples": [
+    [
+     0,
+     0
+    ],
+    [
+     125,
+     1.25
+    ],
+    [
+     250,
+     2.5
+    ],
+    [
+     375,
+     3.75
+    ],
+    [
+     500,
+     5
+    ],
+    [
+     625,
+     6.25
+    ],
+    [
+     750,
+     7.5
+    ],
+    [
+     875,
+     8.75
+    ],
+    [
+     1000,
+     10
+    ],
+    [
+     1125,
+     7.5
+    ],
+    [
+     1250,
+     5
+    ],
+    [
+     1375,
+     2.5
+    ],
+    [
+     1500,
+     0
+    ],
+    [
+     1625,
+     -2.5
+    ],
+    [
+     1750,
+     -5
+    ],
+    [
+     1875,
+     -7.5
+    ],
+    [
+     2000,
+     -10
+    ],
+    [
+     2125,
+     -10
+    ],
+    [
+     2250,
+     -10
+    ],
+    [
+     2375,
+     -10
+    ],
+    [
+     2500,
+     -10
+    ],
+    [
+     2625,
+     -10
+    ],
+    [
+     2750,
+     -10
+    ],
+    [
+     2875,
+     -10
+    ],
+    [
+     3000,
+     -10
+    ]
+   ]
+  },
+  {
+   "name": "ease and step",
+   "home": 5,
+   "keys": [
+    {
+     "t": 0,
+     "v": 0,
+     "interp": "ease"
+    },
+    {
+     "t": 1000,
+     "v": 90,
+     "interp": "step"
+    },
+    {
+     "t": 2000,
+     "v": 45,
+     "interp": "linear"
+    }
+   ],
+   "samples": [
+    [
+     0,
+     0
+    ],
+    [
+     125,
+     3.8671875
+    ],
+    [
+     250,
+     14.0625
+    ],
+    [
+     375,
+     28.4765625
+    ],
+    [
+     500,
+     45
+    ],
+    [
+     625,
+     61.5234375
+    ],
+    [
+     750,
+     75.9375
+    ],
+    [
+     875,
+     86.1328125
+    ],
+    [
+     1000,
+     90
+    ],
+    [
+     1125,
+     90
+    ],
+    [
+     1250,
+     90
+    ],
+    [
+     1375,
+     90
+    ],
+    [
+     1500,
+     90
+    ],
+    [
+     1625,
+     90
+    ],
+    [
+     1750,
+     90
+    ],
+    [
+     1875,
+     90
+    ],
+    [
+     2000,
+     45
+    ],
+    [
+     2125,
+     45
+    ],
+    [
+     2250,
+     45
+    ],
+    [
+     2375,
+     45
+    ],
+    [
+     2500,
+     45
+    ],
+    [
+     2625,
+     45
+    ],
+    [
+     2750,
+     45
+    ],
+    [
+     2875,
+     45
+    ],
+    [
+     3000,
+     45
+    ]
+   ]
+  }
+ ],
+ "lights": [
+  {
+   "name": "fade, step, hold",
+   "keys": [
+    {
+     "t": 500,
+     "color": "#000000",
+     "intensity": 0,
+     "interp": "ease"
+    },
+    {
+     "t": 1500,
+     "color": "#ff8000",
+     "intensity": 1,
+     "interp": "step"
+    },
+    {
+     "t": 2500,
+     "color": "#0000ff",
+     "intensity": 0.25,
+     "interp": "linear"
+    }
+   ],
+   "samples": [
+    [
+     0,
+     {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "intensity": 0
+     }
+    ],
+    [
+     125,
+     {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "intensity": 0
+     }
+    ],
+    [
+     250,
+     {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "intensity": 0
+     }
+    ],
+    [
+     375,
+     {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "intensity": 0
+     }
+    ],
+    [
+     500,
+     {
+      "r": 0,
+      "g": 0,
+      "b": 0,
+      "intensity": 0
+     }
+    ],
+    [
+     625,
+     {
+      "r": 0.04296875,
+      "g": 0.021568627450980392,
+      "b": 0,
+      "intensity": 0.04296875
+     }
+    ],
+    [
+     750,
+     {
+      "r": 0.15625,
+      "g": 0.0784313725490196,
+      "b": 0,
+      "intensity": 0.15625
+     }
+    ],
+    [
+     875,
+     {
+      "r": 0.31640625,
+      "g": 0.1588235294117647,
+      "b": 0,
+      "intensity": 0.31640625
+     }
+    ],
+    [
+     1000,
+     {
+      "r": 0.5,
+      "g": 0.25098039215686274,
+      "b": 0,
+      "intensity": 0.5
+     }
+    ],
+    [
+     1125,
+     {
+      "r": 0.68359375,
+      "g": 0.3431372549019608,
+      "b": 0,
+      "intensity": 0.68359375
+     }
+    ],
+    [
+     1250,
+     {
+      "r": 0.84375,
+      "g": 0.4235294117647059,
+      "b": 0,
+      "intensity": 0.84375
+     }
+    ],
+    [
+     1375,
+     {
+      "r": 0.95703125,
+      "g": 0.4803921568627451,
+      "b": 0,
+      "intensity": 0.95703125
+     }
+    ],
+    [
+     1500,
+     {
+      "r": 1,
+      "g": 0.5019607843137255,
+      "b": 0,
+      "intensity": 1
+     }
+    ],
+    [
+     1625,
+     {
+      "r": 1,
+      "g": 0.5019607843137255,
+      "b": 0,
+      "intensity": 1
+     }
+    ],
+    [
+     1750,
+     {
+      "r": 1,
+      "g": 0.5019607843137255,
+      "b": 0,
+      "intensity": 1
+     }
+    ],
+    [
+     1875,
+     {
+      "r": 1,
+      "g": 0.5019607843137255,
+      "b": 0,
+      "intensity": 1
+     }
+    ],
+    [
+     2000,
+     {
+      "r": 1,
+      "g": 0.5019607843137255,
+      "b": 0,
+      "intensity": 1
+     }
+    ],
+    [
+     2125,
+     {
+      "r": 1,
+      "g": 0.5019607843137255,
+      "b": 0,
+      "intensity": 1
+     }
+    ],
+    [
+     2250,
+     {
+      "r": 1,
+      "g": 0.5019607843137255,
+      "b": 0,
+      "intensity": 1
+     }
+    ],
+    [
+     2375,
+     {
+      "r": 1,
+      "g": 0.5019607843137255,
+      "b": 0,
+      "intensity": 1
+     }
+    ],
+    [
+     2500,
+     {
+      "r": 0,
+      "g": 0,
+      "b": 1,
+      "intensity": 0.25
+     }
+    ],
+    [
+     2625,
+     {
+      "r": 0,
+      "g": 0,
+      "b": 1,
+      "intensity": 0.25
+     }
+    ],
+    [
+     2750,
+     {
+      "r": 0,
+      "g": 0,
+      "b": 1,
+      "intensity": 0.25
+     }
+    ],
+    [
+     2875,
+     {
+      "r": 0,
+      "g": 0,
+      "b": 1,
+      "intensity": 0.25
+     }
+    ],
+    [
+     3000,
+     {
+      "r": 0,
+      "g": 0,
+      "b": 1,
+      "intensity": 0.25
+     }
+    ]
+   ]
+  }
+ ],
+ "frames": [
+  {
+   "name": "fixture show with a sensor response at 3.5 s",
+   "bundle": {
+    "schemaVersion": 1,
+    "show": {
+     "id": "demo",
+     "revision": 1,
+     "name": "Demo"
+    },
+    "environment": {
+     "id": "lab",
+     "revision": 1
+    },
+    "durationMs": 10000,
+    "behaviors": [
+     {
+      "id": "wave",
+      "trigger": {
+       "sensorId": "door",
+       "event": "enter"
+      },
+      "window": null,
+      "blendMs": 3000,
+      "cooldownMs": 2000,
+      "durationMs": 2000,
+      "devices": [
+       "audio-01",
+       "light-01",
+       "robot-01"
+      ]
+     }
+    ],
+    "devices": {
+     "robot-01": {
+      "kind": "doll",
+      "character": {
+       "ref": {
+        "id": "robot",
+        "revision": 1
+       },
+       "joints": [
+        {
+         "name": "head_yaw",
+         "type": "revolute",
+         "min": -90,
+         "max": 90,
+         "home": 0,
+         "maxVelocity": 90
+        },
+        {
+         "name": "arm_pitch",
+         "type": "revolute",
+         "min": 0,
+         "max": 120,
+         "home": 0,
+         "maxVelocity": 60
+        }
+       ]
+      },
+      "motion": {
+       "head_yaw": [
+        {
+         "t": 1000,
+         "v": 45,
+         "interp": "ease"
+        },
+        {
+         "t": 3000,
+         "v": -45,
+         "interp": "linear"
+        },
+        {
+         "t": 5000,
+         "v": 0,
+         "interp": "linear"
+        }
+       ],
+       "arm_pitch": [
+        {
+         "t": 2000,
+         "v": 90,
+         "interp": "linear"
+        },
+        {
+         "t": 6000,
+         "v": 0,
+         "interp": "linear"
+        }
+       ]
+      },
+      "behaviorMotion": {
+       "wave": {
+        "arm_pitch": [
+         {
+          "t": 0,
+          "v": 100,
+          "interp": "linear"
+         },
+         {
+          "t": 1000,
+          "v": 60,
+          "interp": "linear"
+         },
+         {
+          "t": 2000,
+          "v": 100,
+          "interp": "linear"
+         }
+        ]
+       }
+      }
+     },
+     "light-01": {
+      "kind": "light",
+      "dmx": {
+       "universe": 0,
+       "address": 1
+      },
+      "keys": [
+       {
+        "t": 0,
+        "color": "#000000",
+        "intensity": 0,
+        "interp": "linear"
+       },
+       {
+        "t": 1000,
+        "color": "#ff8800",
+        "intensity": 1,
+        "interp": "ease"
+       },
+       {
+        "t": 9000,
+        "color": "#0000ff",
+        "intensity": 0.5,
+        "interp": "step"
+       }
+      ],
+      "behaviorKeys": {
+       "wave": [
+        {
+         "t": 0,
+         "color": "#ffffff",
+         "intensity": 1,
+         "interp": "linear"
+        }
+       ]
+      }
+     },
+     "audio-01": {
+      "kind": "audio",
+      "maxVolumeDb": -6,
+      "cues": [
+       {
+        "id": "music",
+        "t": 0,
+        "assetId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "volumeDb": -12,
+        "label": "Music"
+       }
+      ],
+      "behaviorCues": {
+       "wave": [
+        {
+         "id": "hello",
+         "t": 500,
+         "assetId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         "volumeDb": -10,
+         "label": "Hello"
+        }
+       ]
+      },
+      "assets": {
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+        "path": "/api/v1/assets/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       }
+      }
+     },
+     "door": {
+      "kind": "sensor",
+      "type": "presence",
+      "range": 1.5
+     }
+    }
+   },
+   "started": [
+    {
+     "id": "wave",
+     "startAt": 3500
+    }
+   ],
+   "samples": [
+    {
+     "t": 0,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 0
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0,
+        "g": 0,
+        "b": 0,
+        "intensity": 0
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 250,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 11.25,
+        "arm_pitch": 11.25
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.25,
+        "g": 0.13333333333333333,
+        "b": 0,
+        "intensity": 0.25
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 500,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 22.5,
+        "arm_pitch": 22.5
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.5,
+        "g": 0.26666666666666666,
+        "b": 0,
+        "intensity": 0.5
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 750,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 33.75,
+        "arm_pitch": 33.75
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.75,
+        "g": 0.4,
+        "b": 0,
+        "intensity": 0.75
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 1000,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 45,
+        "arm_pitch": 45
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 1,
+        "g": 0.5333333333333333,
+        "b": 0,
+        "intensity": 1
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 1250,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 41.1328125,
+        "arm_pitch": 56.25
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.99713134765625,
+        "g": 0.5318033854166666,
+        "b": 0.00286865234375,
+        "intensity": 0.998565673828125
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 1500,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 30.9375,
+        "arm_pitch": 67.5
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.98876953125,
+        "g": 0.52734375,
+        "b": 0.01123046875,
+        "intensity": 0.994384765625
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 1750,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 16.5234375,
+        "arm_pitch": 78.75
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.97528076171875,
+        "g": 0.5201497395833333,
+        "b": 0.02471923828125,
+        "intensity": 0.987640380859375
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 2000,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 90
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.95703125,
+        "g": 0.5104166666666666,
+        "b": 0.04296875,
+        "intensity": 0.978515625
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 2250,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": -16.5234375,
+        "arm_pitch": 84.375
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.93438720703125,
+        "g": 0.49833984375,
+        "b": 0.06561279296875,
+        "intensity": 0.967193603515625
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 2500,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": -30.9375,
+        "arm_pitch": 78.75
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.90771484375,
+        "g": 0.48411458333333335,
+        "b": 0.09228515625,
+        "intensity": 0.953857421875
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 2750,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": -41.1328125,
+        "arm_pitch": 73.125
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.87738037109375,
+        "g": 0.46793619791666663,
+        "b": 0.12261962890625,
+        "intensity": 0.938690185546875
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 3000,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": -45,
+        "arm_pitch": 67.5
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.84375,
+        "g": 0.45,
+        "b": 0.15625,
+        "intensity": 0.921875
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 3250,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": -39.375,
+        "arm_pitch": 61.875
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.80718994140625,
+        "g": 0.4305013020833333,
+        "b": 0.19281005859375,
+        "intensity": 0.903594970703125
+       }
+      },
+      "activeBehaviors": []
+     }
+    },
+    {
+     "t": 3500,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": -33.75,
+        "arm_pitch": 56.25
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.76806640625,
+        "g": 0.40963541666666664,
+        "b": 0.23193359375,
+        "intensity": 0.884033203125
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 3750,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": -28.125,
+        "arm_pitch": 57.11082175925926
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.7726299144603588,
+        "g": 0.42125138647762345,
+        "b": 0.24704601146556712,
+        "intensity": 0.8863149572301794
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 4000,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": -22.5,
+        "arm_pitch": 59.49074074074074
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.7852466724537037,
+        "g": 0.45336612654320985,
+        "b": 0.28882740162037035,
+        "intensity": 0.8926233362268519
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 4250,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": -16.875,
+        "arm_pitch": 63.0859375
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.8043060302734375,
+        "g": 0.5018798828125,
+        "b": 0.3519439697265625,
+        "intensity": 0.9021530151367188
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 4500,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": -11.25,
+        "arm_pitch": 67.5925925925926
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.8281973379629629,
+        "g": 0.5626929012345678,
+        "b": 0.4310619212962963,
+        "intensity": 0.9140986689814815
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 4750,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": -5.625,
+        "arm_pitch": 72.70688657407408
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.8553099455656828,
+        "g": 0.6317054277584877,
+        "b": 0.5208474618417245,
+        "intensity": 0.9276549727828415
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 5000,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 78.125
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.884033203125,
+        "g": 0.7048177083333333,
+        "b": 0.615966796875,
+        "intensity": 0.9420166015625
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 5250,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 83.54311342592592
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.9127564606843172,
+        "g": 0.777929988908179,
+        "b": 0.7110861319082755,
+        "intensity": 0.9563782303421586
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 5500,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 88.6574074074074
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.939869068287037,
+        "g": 0.8469425154320986,
+        "b": 0.8008716724537037,
+        "intensity": 0.9699345341435185
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 5750,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 93.1640625
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.9637603759765625,
+        "g": 0.9077555338541666,
+        "b": 0.8799896240234375,
+        "intensity": 0.9818801879882812
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 6000,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 96.75925925925927
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.9828197337962963,
+        "g": 0.9562692901234568,
+        "b": 0.9431061921296298,
+        "intensity": 0.9914098668981481
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 6250,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 99.13917824074073
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.9954364917896412,
+        "g": 0.9883840301890432,
+        "b": 0.9848875822844328,
+        "intensity": 0.9977182458948206
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 6500,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 100
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "intensity": 1
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 6750,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 90
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "intensity": 1
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 7000,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 80
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "intensity": 1
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 7250,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 70
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "intensity": 1
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 7500,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 60
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "intensity": 1
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 7750,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 70
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "intensity": 1
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 8000,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 80
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "intensity": 1
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 8250,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 90
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "intensity": 1
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 8500,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 100
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 1,
+        "g": 1,
+        "b": 1,
+        "intensity": 1
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 8750,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 98.0324074074074
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.9803240740740741,
+        "g": 0.9803240740740741,
+        "b": 1,
+        "intensity": 0.9901620370370371
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 9000,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 92.5925925925926
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.9259259259259259,
+        "g": 0.9259259259259259,
+        "b": 1,
+        "intensity": 0.962962962962963
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 9250,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 84.375
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.84375,
+        "g": 0.84375,
+        "b": 1,
+        "intensity": 0.921875
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 9500,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 74.07407407407408
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.7407407407407407,
+        "g": 0.7407407407407407,
+        "b": 1,
+        "intensity": 0.8703703703703703
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 9750,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 62.38425925925925
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.6238425925925926,
+        "g": 0.6238425925925926,
+        "b": 1,
+        "intensity": 0.8119212962962963
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    },
+    {
+     "t": 10000,
+     "frame": {
+      "poses": {
+       "robot-01": {
+        "head_yaw": 0,
+        "arm_pitch": 50
+       }
+      },
+      "lights": {
+       "light-01": {
+        "r": 0.5,
+        "g": 0.5,
+        "b": 1,
+        "intensity": 0.75
+       }
+      },
+      "activeBehaviors": [
+       "wave"
+      ]
+     }
+    }
+   ],
+   "audio": {
+    "audio-01": [
+     {
+      "cueId": "music",
+      "at": 0
+     },
+     {
+      "cueId": "hello",
+      "at": 7000
+     }
+    ]
+   }
+  }
+ ],
+ "scheduler": [
+  {
+   "name": "window, cooldown and one behavior per device",
+   "behaviors": [
+    {
+     "window": null,
+     "blendMs": 3000,
+     "cooldownMs": 2000,
+     "durationMs": 2000,
+     "id": "wave",
+     "trigger": {
+      "sensorId": "door",
+      "event": "enter"
+     },
+     "devices": [
+      "audio-01",
+      "light-01",
+      "robot-01"
+     ]
+    },
+    {
+     "window": {
+      "fromMs": 1000,
+      "toMs": 9000
+     },
+     "blendMs": 500,
+     "cooldownMs": 0,
+     "durationMs": 1000,
+     "id": "nod",
+     "trigger": {
+      "sensorId": "button",
+      "event": "press"
+     },
+     "devices": [
+      "robot-01"
+     ]
+    },
+    {
+     "window": null,
+     "blendMs": 0,
+     "cooldownMs": 1000,
+     "durationMs": 500,
+     "id": "chime",
+     "trigger": {
+      "sensorId": "door",
+      "event": "enter"
+     },
+     "devices": [
+      "audio-02"
+     ]
+    }
+   ],
+   "steps": [
+    {
+     "sensorId": "door",
+     "event": "enter",
+     "t": 500,
+     "started": [
+      {
+       "id": "wave",
+       "startAt": 500
+      },
+      {
+       "id": "chime",
+       "startAt": 500
+      }
+     ]
+    },
+    {
+     "sensorId": "button",
+     "event": "press",
+     "t": 700,
+     "started": []
+    },
+    {
+     "sensorId": "door",
+     "event": "enter",
+     "t": 1200,
+     "started": []
+    },
+    {
+     "sensorId": "button",
+     "event": "press",
+     "t": 1500,
+     "started": []
+    },
+    {
+     "sensorId": "door",
+     "event": "exit",
+     "t": 2400,
+     "started": []
+    },
+    {
+     "sensorId": "door",
+     "event": "enter",
+     "t": 2500,
+     "started": [
+      {
+       "id": "chime",
+       "startAt": 2500
+      }
+     ]
+    },
+    {
+     "sensorId": "button",
+     "event": "press",
+     "t": 8000,
+     "started": []
+    },
+    {
+     "sensorId": "button",
+     "event": "press",
+     "t": 8600,
+     "started": [
+      {
+       "id": "nod",
+       "startAt": 8600
+      }
+     ]
+    },
+    {
+     "sensorId": "door",
+     "event": "enter",
+     "t": 10000,
+     "started": [
+      {
+       "id": "chime",
+       "startAt": 10000
+      }
+     ]
+    },
+    {
+     "sensorId": "door",
+     "event": "enter",
+     "t": 10600,
+     "started": [
+      {
+       "id": "wave",
+       "startAt": 10600
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "deviceChecks": [
+  {
+   "name": "compiled payload passes",
+   "payload": {
+    "kind": "doll",
+    "character": {
+     "ref": {
+      "id": "robot",
+      "revision": 1
+     },
+     "joints": [
+      {
+       "name": "head_yaw",
+       "type": "revolute",
+       "min": -90,
+       "max": 90,
+       "home": 0,
+       "maxVelocity": 90
+      },
+      {
+       "name": "arm_pitch",
+       "type": "revolute",
+       "min": 0,
+       "max": 120,
+       "home": 0,
+       "maxVelocity": 60
+      }
+     ]
+    },
+    "motion": {
+     "head_yaw": [
+      {
+       "t": 1000,
+       "v": 45,
+       "interp": "ease"
+      },
+      {
+       "t": 3000,
+       "v": -45,
+       "interp": "linear"
+      },
+      {
+       "t": 5000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ],
+     "arm_pitch": [
+      {
+       "t": 2000,
+       "v": 90,
+       "interp": "linear"
+      },
+      {
+       "t": 6000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ]
+    },
+    "behaviorMotion": {
+     "wave": {
+      "arm_pitch": [
+       {
+        "t": 0,
+        "v": 100,
+        "interp": "linear"
+       },
+       {
+        "t": 1000,
+        "v": 60,
+        "interp": "linear"
+       },
+       {
+        "t": 2000,
+        "v": 100,
+        "interp": "linear"
+       }
+      ]
+     }
+    }
+   },
+   "limits": [
+    {
+     "name": "head_yaw",
+     "type": "revolute",
+     "min": -90,
+     "max": 90,
+     "home": 0,
+     "maxVelocity": 90
+    },
+    {
+     "name": "arm_pitch",
+     "type": "revolute",
+     "min": 0,
+     "max": 120,
+     "home": 0,
+     "maxVelocity": 60
+    }
+   ],
+   "durationMs": 10000,
+   "behaviors": [
+    {
+     "id": "wave",
+     "trigger": {
+      "sensorId": "door",
+      "event": "enter"
+     },
+     "window": null,
+     "blendMs": 3000,
+     "cooldownMs": 2000,
+     "durationMs": 2000,
+     "devices": [
+      "audio-01",
+      "light-01",
+      "robot-01"
+     ]
+    }
+   ],
+   "errors": []
+  },
+  {
+   "name": "key outside the range of motion",
+   "payload": {
+    "kind": "doll",
+    "character": {
+     "ref": {
+      "id": "robot",
+      "revision": 1
+     },
+     "joints": [
+      {
+       "name": "head_yaw",
+       "type": "revolute",
+       "min": -90,
+       "max": 90,
+       "home": 0,
+       "maxVelocity": 90
+      },
+      {
+       "name": "arm_pitch",
+       "type": "revolute",
+       "min": 0,
+       "max": 120,
+       "home": 0,
+       "maxVelocity": 60
+      }
+     ]
+    },
+    "motion": {
+     "head_yaw": [
+      {
+       "t": 1000,
+       "v": 95,
+       "interp": "ease"
+      },
+      {
+       "t": 3000,
+       "v": -45,
+       "interp": "linear"
+      },
+      {
+       "t": 5000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ],
+     "arm_pitch": [
+      {
+       "t": 2000,
+       "v": 90,
+       "interp": "linear"
+      },
+      {
+       "t": 6000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ]
+    },
+    "behaviorMotion": {
+     "wave": {
+      "arm_pitch": [
+       {
+        "t": 0,
+        "v": 100,
+        "interp": "linear"
+       },
+       {
+        "t": 1000,
+        "v": 60,
+        "interp": "linear"
+       },
+       {
+        "t": 2000,
+        "v": 100,
+        "interp": "linear"
+       }
+      ]
+     }
+    }
+   },
+   "limits": [
+    {
+     "name": "head_yaw",
+     "type": "revolute",
+     "min": -90,
+     "max": 90,
+     "home": 0,
+     "maxVelocity": 90
+    },
+    {
+     "name": "arm_pitch",
+     "type": "revolute",
+     "min": 0,
+     "max": 120,
+     "home": 0,
+     "maxVelocity": 60
+    }
+   ],
+   "durationMs": 10000,
+   "behaviors": [
+    {
+     "id": "wave",
+     "trigger": {
+      "sensorId": "door",
+      "event": "enter"
+     },
+     "window": null,
+     "blendMs": 3000,
+     "cooldownMs": 2000,
+     "durationMs": 2000,
+     "devices": [
+      "audio-01",
+      "light-01",
+      "robot-01"
+     ]
+    }
+   ],
+   "errors": [
+    "motion-out-of-range",
+    "motion-velocity-exceeded"
+   ]
+  },
+  {
+   "name": "controller holds tighter limits than the cloud",
+   "payload": {
+    "kind": "doll",
+    "character": {
+     "ref": {
+      "id": "robot",
+      "revision": 1
+     },
+     "joints": [
+      {
+       "name": "head_yaw",
+       "type": "revolute",
+       "min": -90,
+       "max": 90,
+       "home": 0,
+       "maxVelocity": 90
+      },
+      {
+       "name": "arm_pitch",
+       "type": "revolute",
+       "min": 0,
+       "max": 120,
+       "home": 0,
+       "maxVelocity": 60
+      }
+     ]
+    },
+    "motion": {
+     "head_yaw": [
+      {
+       "t": 1000,
+       "v": 45,
+       "interp": "ease"
+      },
+      {
+       "t": 3000,
+       "v": -45,
+       "interp": "linear"
+      },
+      {
+       "t": 5000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ],
+     "arm_pitch": [
+      {
+       "t": 2000,
+       "v": 90,
+       "interp": "linear"
+      },
+      {
+       "t": 6000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ]
+    },
+    "behaviorMotion": {
+     "wave": {
+      "arm_pitch": [
+       {
+        "t": 0,
+        "v": 100,
+        "interp": "linear"
+       },
+       {
+        "t": 1000,
+        "v": 60,
+        "interp": "linear"
+       },
+       {
+        "t": 2000,
+        "v": 100,
+        "interp": "linear"
+       }
+      ]
+     }
+    }
+   },
+   "limits": [
+    {
+     "name": "head_yaw",
+     "type": "revolute",
+     "min": -30,
+     "max": 30,
+     "home": 0,
+     "maxVelocity": 90
+    },
+    {
+     "name": "arm_pitch",
+     "type": "revolute",
+     "min": 0,
+     "max": 120,
+     "home": 0,
+     "maxVelocity": 60
+    }
+   ],
+   "durationMs": 10000,
+   "behaviors": [
+    {
+     "id": "wave",
+     "trigger": {
+      "sensorId": "door",
+      "event": "enter"
+     },
+     "window": null,
+     "blendMs": 3000,
+     "cooldownMs": 2000,
+     "durationMs": 2000,
+     "devices": [
+      "audio-01",
+      "light-01",
+      "robot-01"
+     ]
+    }
+   ],
+   "errors": [
+    "motion-out-of-range"
+   ]
+  },
+  {
+   "name": "too fast from home",
+   "payload": {
+    "kind": "doll",
+    "character": {
+     "ref": {
+      "id": "robot",
+      "revision": 1
+     },
+     "joints": [
+      {
+       "name": "head_yaw",
+       "type": "revolute",
+       "min": -90,
+       "max": 90,
+       "home": 0,
+       "maxVelocity": 90
+      },
+      {
+       "name": "arm_pitch",
+       "type": "revolute",
+       "min": 0,
+       "max": 120,
+       "home": 0,
+       "maxVelocity": 60
+      }
+     ]
+    },
+    "motion": {
+     "head_yaw": [
+      {
+       "t": 1000,
+       "v": 45,
+       "interp": "ease"
+      },
+      {
+       "t": 3000,
+       "v": -45,
+       "interp": "linear"
+      },
+      {
+       "t": 5000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ],
+     "arm_pitch": [
+      {
+       "t": 100,
+       "v": 90,
+       "interp": "linear"
+      },
+      {
+       "t": 6000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ]
+    },
+    "behaviorMotion": {
+     "wave": {
+      "arm_pitch": [
+       {
+        "t": 0,
+        "v": 100,
+        "interp": "linear"
+       },
+       {
+        "t": 1000,
+        "v": 60,
+        "interp": "linear"
+       },
+       {
+        "t": 2000,
+        "v": 100,
+        "interp": "linear"
+       }
+      ]
+     }
+    }
+   },
+   "limits": [
+    {
+     "name": "head_yaw",
+     "type": "revolute",
+     "min": -90,
+     "max": 90,
+     "home": 0,
+     "maxVelocity": 90
+    },
+    {
+     "name": "arm_pitch",
+     "type": "revolute",
+     "min": 0,
+     "max": 120,
+     "home": 0,
+     "maxVelocity": 60
+    }
+   ],
+   "durationMs": 10000,
+   "behaviors": [
+    {
+     "id": "wave",
+     "trigger": {
+      "sensorId": "door",
+      "event": "enter"
+     },
+     "window": null,
+     "blendMs": 3000,
+     "cooldownMs": 2000,
+     "durationMs": 2000,
+     "devices": [
+      "audio-01",
+      "light-01",
+      "robot-01"
+     ]
+    }
+   ],
+   "errors": [
+    "motion-velocity-exceeded"
+   ]
+  },
+  {
+   "name": "step jump and unsorted keys",
+   "payload": {
+    "kind": "doll",
+    "character": {
+     "ref": {
+      "id": "robot",
+      "revision": 1
+     },
+     "joints": [
+      {
+       "name": "head_yaw",
+       "type": "revolute",
+       "min": -90,
+       "max": 90,
+       "home": 0,
+       "maxVelocity": 90
+      },
+      {
+       "name": "arm_pitch",
+       "type": "revolute",
+       "min": 0,
+       "max": 120,
+       "home": 0,
+       "maxVelocity": 60
+      }
+     ]
+    },
+    "motion": {
+     "head_yaw": [
+      {
+       "t": 2000,
+       "v": 10,
+       "interp": "step"
+      },
+      {
+       "t": 3000,
+       "v": 20,
+       "interp": "linear"
+      },
+      {
+       "t": 2500,
+       "v": 0,
+       "interp": "linear"
+      }
+     ],
+     "arm_pitch": [
+      {
+       "t": 2000,
+       "v": 90,
+       "interp": "linear"
+      },
+      {
+       "t": 6000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ]
+    },
+    "behaviorMotion": {
+     "wave": {
+      "arm_pitch": [
+       {
+        "t": 0,
+        "v": 100,
+        "interp": "linear"
+       },
+       {
+        "t": 1000,
+        "v": 60,
+        "interp": "linear"
+       },
+       {
+        "t": 2000,
+        "v": 100,
+        "interp": "linear"
+       }
+      ]
+     }
+    }
+   },
+   "limits": [
+    {
+     "name": "head_yaw",
+     "type": "revolute",
+     "min": -90,
+     "max": 90,
+     "home": 0,
+     "maxVelocity": 90
+    },
+    {
+     "name": "arm_pitch",
+     "type": "revolute",
+     "min": 0,
+     "max": 120,
+     "home": 0,
+     "maxVelocity": 60
+    }
+   ],
+   "durationMs": 10000,
+   "behaviors": [
+    {
+     "id": "wave",
+     "trigger": {
+      "sensorId": "door",
+      "event": "enter"
+     },
+     "window": null,
+     "blendMs": 3000,
+     "cooldownMs": 2000,
+     "durationMs": 2000,
+     "devices": [
+      "audio-01",
+      "light-01",
+      "robot-01"
+     ]
+    }
+   ],
+   "errors": [
+    "keys-unsorted",
+    "motion-velocity-exceeded"
+   ]
+  },
+  {
+   "name": "joint the controller does not have, clip for an unknown behavior",
+   "payload": {
+    "kind": "doll",
+    "character": {
+     "ref": {
+      "id": "robot",
+      "revision": 1
+     },
+     "joints": [
+      {
+       "name": "head_yaw",
+       "type": "revolute",
+       "min": -90,
+       "max": 90,
+       "home": 0,
+       "maxVelocity": 90
+      },
+      {
+       "name": "arm_pitch",
+       "type": "revolute",
+       "min": 0,
+       "max": 120,
+       "home": 0,
+       "maxVelocity": 60
+      }
+     ]
+    },
+    "motion": {
+     "head_yaw": [
+      {
+       "t": 1000,
+       "v": 45,
+       "interp": "ease"
+      },
+      {
+       "t": 3000,
+       "v": -45,
+       "interp": "linear"
+      },
+      {
+       "t": 5000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ],
+     "arm_pitch": [
+      {
+       "t": 2000,
+       "v": 90,
+       "interp": "linear"
+      },
+      {
+       "t": 6000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ],
+     "tail_wag": [
+      {
+       "t": 1000,
+       "v": 1,
+       "interp": "linear"
+      }
+     ]
+    },
+    "behaviorMotion": {
+     "wave": {
+      "arm_pitch": [
+       {
+        "t": 0,
+        "v": 100,
+        "interp": "linear"
+       },
+       {
+        "t": 1000,
+        "v": 60,
+        "interp": "linear"
+       },
+       {
+        "t": 2000,
+        "v": 100,
+        "interp": "linear"
+       }
+      ]
+     },
+     "ghost": {}
+    }
+   },
+   "limits": [
+    {
+     "name": "head_yaw",
+     "type": "revolute",
+     "min": -90,
+     "max": 90,
+     "home": 0,
+     "maxVelocity": 90
+    },
+    {
+     "name": "arm_pitch",
+     "type": "revolute",
+     "min": 0,
+     "max": 120,
+     "home": 0,
+     "maxVelocity": 60
+    }
+   ],
+   "durationMs": 10000,
+   "behaviors": [
+    {
+     "id": "wave",
+     "trigger": {
+      "sensorId": "door",
+      "event": "enter"
+     },
+     "window": null,
+     "blendMs": 3000,
+     "cooldownMs": 2000,
+     "durationMs": 2000,
+     "devices": [
+      "audio-01",
+      "light-01",
+      "robot-01"
+     ]
+    }
+   ],
+   "errors": [
+    "behavior-unknown",
+    "track-joint-unknown"
+   ]
+  },
+  {
+   "name": "blend too short to be safe from any pose",
+   "payload": {
+    "kind": "doll",
+    "character": {
+     "ref": {
+      "id": "robot",
+      "revision": 1
+     },
+     "joints": [
+      {
+       "name": "head_yaw",
+       "type": "revolute",
+       "min": -90,
+       "max": 90,
+       "home": 0,
+       "maxVelocity": 90
+      },
+      {
+       "name": "arm_pitch",
+       "type": "revolute",
+       "min": 0,
+       "max": 120,
+       "home": 0,
+       "maxVelocity": 60
+      }
+     ]
+    },
+    "motion": {
+     "head_yaw": [
+      {
+       "t": 1000,
+       "v": 45,
+       "interp": "ease"
+      },
+      {
+       "t": 3000,
+       "v": -45,
+       "interp": "linear"
+      },
+      {
+       "t": 5000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ],
+     "arm_pitch": [
+      {
+       "t": 2000,
+       "v": 90,
+       "interp": "linear"
+      },
+      {
+       "t": 6000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ]
+    },
+    "behaviorMotion": {
+     "wave": {
+      "arm_pitch": [
+       {
+        "t": 0,
+        "v": 100,
+        "interp": "linear"
+       },
+       {
+        "t": 1000,
+        "v": 60,
+        "interp": "linear"
+       },
+       {
+        "t": 2000,
+        "v": 100,
+        "interp": "linear"
+       }
+      ]
+     }
+    }
+   },
+   "limits": [
+    {
+     "name": "head_yaw",
+     "type": "revolute",
+     "min": -90,
+     "max": 90,
+     "home": 0,
+     "maxVelocity": 90
+    },
+    {
+     "name": "arm_pitch",
+     "type": "revolute",
+     "min": 0,
+     "max": 120,
+     "home": 0,
+     "maxVelocity": 60
+    }
+   ],
+   "durationMs": 10000,
+   "behaviors": [
+    {
+     "id": "wave",
+     "trigger": {
+      "sensorId": "door",
+      "event": "enter"
+     },
+     "window": null,
+     "blendMs": 500,
+     "cooldownMs": 2000,
+     "durationMs": 2000,
+     "devices": [
+      "audio-01",
+      "light-01",
+      "robot-01"
+     ]
+    }
+   ],
+   "errors": [
+    "behavior-blend-too-fast"
+   ]
+  },
+  {
+   "name": "key after the end",
+   "payload": {
+    "kind": "doll",
+    "character": {
+     "ref": {
+      "id": "robot",
+      "revision": 1
+     },
+     "joints": [
+      {
+       "name": "head_yaw",
+       "type": "revolute",
+       "min": -90,
+       "max": 90,
+       "home": 0,
+       "maxVelocity": 90
+      },
+      {
+       "name": "arm_pitch",
+       "type": "revolute",
+       "min": 0,
+       "max": 120,
+       "home": 0,
+       "maxVelocity": 60
+      }
+     ]
+    },
+    "motion": {
+     "head_yaw": [
+      {
+       "t": 1000,
+       "v": 45,
+       "interp": "ease"
+      },
+      {
+       "t": 3000,
+       "v": -45,
+       "interp": "linear"
+      },
+      {
+       "t": 5000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ],
+     "arm_pitch": [
+      {
+       "t": 2000,
+       "v": 90,
+       "interp": "linear"
+      },
+      {
+       "t": 6000,
+       "v": 0,
+       "interp": "linear"
+      }
+     ]
+    },
+    "behaviorMotion": {
+     "wave": {
+      "arm_pitch": [
+       {
+        "t": 0,
+        "v": 100,
+        "interp": "linear"
+       },
+       {
+        "t": 1000,
+        "v": 60,
+        "interp": "linear"
+       },
+       {
+        "t": 2000,
+        "v": 100,
+        "interp": "linear"
+       }
+      ]
+     }
+    }
+   },
+   "limits": [
+    {
+     "name": "head_yaw",
+     "type": "revolute",
+     "min": -90,
+     "max": 90,
+     "home": 0,
+     "maxVelocity": 90
+    },
+    {
+     "name": "arm_pitch",
+     "type": "revolute",
+     "min": 0,
+     "max": 120,
+     "home": 0,
+     "maxVelocity": 60
+    }
+   ],
+   "durationMs": 5000,
+   "behaviors": [
+    {
+     "id": "wave",
+     "trigger": {
+      "sensorId": "door",
+      "event": "enter"
+     },
+     "window": null,
+     "blendMs": 3000,
+     "cooldownMs": 2000,
+     "durationMs": 2000,
+     "devices": [
+      "audio-01",
+      "light-01",
+      "robot-01"
+     ]
+    }
+   ],
+   "errors": [
+    "key-after-end"
+   ]
+  }
+ ]
+}

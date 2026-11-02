@@ -1,0 +1,116 @@
+{
+  "joints": [
+    {
+      "name": "neck_raise",
+      "node": "neck1",
+      "type": "revolute",
+      "axis": [
+        -0.973,
+        -0.231,
+        0
+      ],
+      "min": -15,
+      "max": 35,
+      "home": 0,
+      "maxVelocity": 30
+    },
+    {
+      "name": "neck_turn",
+      "node": "neck2",
+      "type": "revolute",
+      "axis": [
+        0.13,
+        0,
+        -0.991
+      ],
+      "min": -40,
+      "max": 40,
+      "home": 0,
+      "maxVelocity": 45
+    },
+    {
+      "name": "head_pitch",
+      "node": "neck3",
+      "type": "revolute",
+      "axis": [
+        0.661,
+        -0.751,
+        0
+      ],
+      "min": -25,
+      "max": 25,
+      "home": 0,
+      "maxVelocity": 50
+    },
+    {
+      "name": "jaw_open",
+      "node": "jaw_lower",
+      "type": "revolute",
+      "axis": [
+        -0.898,
+        0.439,
+        0
+      ],
+      "min": 0,
+      "max": 35,
+      "home": 0,
+      "maxVelocity": 120
+    },
+    {
+      "name": "wing_l",
+      "node": "wing_lower_L",
+      "type": "revolute",
+      "axis": [
+        0.955,
+        0.1,
+        0.279
+      ],
+      "min": -10,
+      "max": 45,
+      "home": 0,
+      "maxVelocity": 60
+    },
+    {
+      "name": "wing_r",
+      "node": "wing_lower_R",
+      "type": "revolute",
+      "axis": [
+        0.955,
+        -0.1,
+        -0.279
+      ],
+      "min": -10,
+      "max": 45,
+      "home": 0,
+      "maxVelocity": 60
+    },
+    {
+      "name": "tail_sway",
+      "node": "tail1",
+      "type": "revolute",
+      "axis": [
+        -0.541,
+        0.782,
+        0.311
+      ],
+      "min": -30,
+      "max": 30,
+      "home": 0,
+      "maxVelocity": 40
+    },
+    {
+      "name": "tail_curl",
+      "node": "tail2",
+      "type": "revolute",
+      "axis": [
+        0.22,
+        0.969,
+        -0.11
+      ],
+      "min": -35,
+      "max": 35,
+      "home": 0,
+      "maxVelocity": 50
+    }
+  ]
+}

@@ -1,0 +1,5485 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Show Studio API",
+    "version": "0.1.0",
+    "description": "Studio (characters, environments, shows, revisions) and fleet manager (devices, deployments, launch). Generated from @studio/schema."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "paths": {
+    "/api/v1/health": {
+      "get": {
+        "operationId": "health",
+        "summary": "Liveness probe",
+        "tags": [
+          "ops"
+        ],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/auth/dev-login": {
+      "post": {
+        "operationId": "devLogin",
+        "summary": "Issue a session token for a named persona (development only)",
+        "tags": [
+          "auth"
+        ],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevLoginResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DevLoginRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/me": {
+      "get": {
+        "operationId": "me",
+        "summary": "Current user",
+        "tags": [
+          "auth"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/User"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets": {
+      "get": {
+        "operationId": "listAssets",
+        "summary": "List uploaded models and audio",
+        "tags": [
+          "assets"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "uploadAsset",
+        "summary": "Upload a GLB model or audio file (multipart field \"file\")",
+        "tags": [
+          "assets"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Asset"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "engineer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/assets/{id}": {
+      "get": {
+        "operationId": "getAsset",
+        "summary": "Download an asset by content hash (immutable, cacheable)",
+        "tags": [
+          "assets"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "device": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Sha256"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File bytes",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/workspace": {
+      "get": {
+        "operationId": "getWorkspace",
+        "summary": "The workspace (tenant) and its people directory",
+        "tags": [
+          "workspace"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Workspace"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects": {
+      "get": {
+        "operationId": "listProjects",
+        "summary": "Projects you are a member of (admins see all), with members and your role",
+        "tags": [
+          "workspace"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createProject",
+        "summary": "Create a project; the creator becomes its owner",
+        "tags": [
+          "workspace"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "engineer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}": {
+      "get": {
+        "operationId": "getProject",
+        "summary": "One project with its access list",
+        "tags": [
+          "workspace"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/projects/{projectId}/members/{user}": {
+      "put": {
+        "operationId": "setProjectMember",
+        "summary": "Grant or change a member role (project owners and admins)",
+        "tags": [
+          "workspace"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{0,59}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetMemberRequest"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removeProjectMember",
+        "summary": "Revoke access (project owners and admins; a project keeps at least one owner)",
+        "tags": [
+          "workspace"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "user",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9][a-z0-9._-]{0,59}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs": {
+      "get": {
+        "operationId": "listDocuments",
+        "summary": "List characters, environments and shows",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/DocKind"
+            }
+          },
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDocument",
+        "summary": "Create a document with an initial draft",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioDocument"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "engineer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDocumentRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/{id}": {
+      "get": {
+        "operationId": "getDocument",
+        "summary": "Get a document and its current draft",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudioDocument"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/{id}/draft": {
+      "put": {
+        "operationId": "saveDraft",
+        "summary": "Save the draft (optimistic concurrency via draftVersion)",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "engineer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveDraftRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/{id}/validate": {
+      "post": {
+        "operationId": "validateDraft",
+        "summary": "Run the server-side validator on the stored draft",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationReport"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/{id}/publish": {
+      "post": {
+        "operationId": "publish",
+        "summary": "Validate and freeze the draft as a new immutable revision",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "engineer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PublishRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/{id}/revisions": {
+      "get": {
+        "operationId": "listRevisions",
+        "summary": "Revision history",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/{id}/revisions/{revision}": {
+      "get": {
+        "operationId": "getRevision",
+        "summary": "Get an immutable revision",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "revision",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionDetail"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/{id}/revisions/{revision}/approve": {
+      "post": {
+        "operationId": "approveRevision",
+        "summary": "Safety approval: signs the compiled bundle (author cannot approve own work)",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "revision",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "safety"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/docs/{id}/revisions/{revision}/reject": {
+      "post": {
+        "operationId": "rejectRevision",
+        "summary": "Safety rejection",
+        "tags": [
+          "documents"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          },
+          {
+            "name": "revision",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "exclusiveMinimum": 0,
+              "maximum": 9007199254740991
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionSummary"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "safety"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bundles/{sha256}": {
+      "get": {
+        "operationId": "getBundle",
+        "summary": "Download the exact signed bundle bytes",
+        "tags": [
+          "devices"
+        ],
+        "security": [
+          {
+            "bearer": []
+          },
+          {
+            "device": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "sha256",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Sha256"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File bytes",
+            "content": {
+              "application/octet-stream": {}
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/provisioning/{environmentId}": {
+      "get": {
+        "operationId": "provision",
+        "summary": "Device credentials and pinned definitions for an attraction",
+        "tags": [
+          "devices"
+        ],
+        "security": [
+          {
+            "provisioning": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProvisioningResponse"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/signing-key": {
+      "get": {
+        "operationId": "signingKey",
+        "summary": "Public key used to verify bundle signatures",
+        "tags": [
+          "devices"
+        ],
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SigningKey"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/devices": {
+      "get": {
+        "operationId": "listDevices",
+        "summary": "Registered devices with reported state",
+        "tags": [
+          "fleet"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeviceList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/environments/{environmentId}/status": {
+      "get": {
+        "operationId": "environmentStatus",
+        "summary": "Operator view: devices, prepared shows, current run, e-stop",
+        "tags": [
+          "fleet"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnvironmentStatus"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/deployments": {
+      "get": {
+        "operationId": "listDeployments",
+        "summary": "Deployments with live per-device status",
+        "tags": [
+          "fleet"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "environmentId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DeploymentList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createDeployment",
+        "summary": "Stage an approved show on every device of its attraction (all-or-nothing pre-check)",
+        "tags": [
+          "fleet"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Deployment"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "engineer",
+          "operator"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateDeploymentRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/launch": {
+      "post": {
+        "operationId": "launch",
+        "summary": "Launch a staged show at a synchronized start time",
+        "tags": [
+          "fleet"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "202": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShowRun"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "operator"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LaunchRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/stop": {
+      "post": {
+        "operationId": "stop",
+        "summary": "Stop the running show; figures return home",
+        "tags": [
+          "fleet"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ack"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "operator"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvironmentCommand"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/estop": {
+      "post": {
+        "operationId": "estop",
+        "summary": "Software e-stop (latched). Any signed-in user may trigger it",
+        "tags": [
+          "fleet"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ack"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvironmentCommand"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/reset": {
+      "post": {
+        "operationId": "resetEstop",
+        "summary": "Clear the e-stop latch",
+        "tags": [
+          "fleet"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ack"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "operator"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EnvironmentCommand"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fleet/sensors/{deviceId}/simulate": {
+      "post": {
+        "operationId": "simulateSensor",
+        "summary": "Development: make a simulated sensor fire",
+        "tags": [
+          "fleet"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "deviceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Ack"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        },
+        "x-roles": [
+          "operator",
+          "engineer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SimulateSensorRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit": {
+      "get": {
+        "operationId": "listAudit",
+        "summary": "Append-only audit log (newest first)",
+        "tags": [
+          "audit"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditList"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit/verify": {
+      "get": {
+        "operationId": "verifyAudit",
+        "summary": "Verify the audit hash chain",
+        "tags": [
+          "audit"
+        ],
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditVerification"
+                }
+              }
+            }
+          },
+          "default": {
+            "description": "Problem details (RFC 9457)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Ack": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean",
+            "const": true
+          }
+        },
+        "required": [
+          "ok"
+        ],
+        "additionalProperties": false
+      },
+      "AckMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "ack"
+          },
+          "opId": {
+            "type": "string"
+          },
+          "ok": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "opId",
+          "ok",
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "ActiveShow": {
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "startAt": {
+            "type": "number"
+          },
+          "showTimeMs": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "sha256",
+          "startAt",
+          "showTimeMs"
+        ],
+        "additionalProperties": false
+      },
+      "Asset": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "description": "Content address: SHA-256 of the file bytes",
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AssetKind"
+          },
+          "mime": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "createdBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "mime",
+          "size",
+          "createdAt",
+          "createdBy"
+        ],
+        "additionalProperties": false
+      },
+      "AssetKind": {
+        "type": "string",
+        "enum": [
+          "model",
+          "audio"
+        ]
+      },
+      "AssetList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Asset"
+        }
+      },
+      "AudioCue": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "t": {
+            "$ref": "#/components/schemas/TimeMs"
+          },
+          "assetId": {
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "volumeDb": {
+            "type": "number",
+            "maximum": 0,
+            "description": "Playback level in dBFS"
+          },
+          "label": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "t",
+          "assetId",
+          "volumeDb",
+          "label"
+        ],
+        "additionalProperties": false
+      },
+      "AudioPayload": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "audio"
+          },
+          "maxVolumeDb": {
+            "type": "number",
+            "maximum": 0
+          },
+          "cues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioCue"
+            }
+          },
+          "behaviorCues": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/AudioCue"
+              }
+            }
+          },
+          "assets": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/Sha256"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Audio files to fetch and verify before reporting staged"
+          }
+        },
+        "required": [
+          "kind",
+          "maxVolumeDb",
+          "cues",
+          "behaviorCues",
+          "assets"
+        ],
+        "additionalProperties": false
+      },
+      "AudioZone": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "position": {
+            "$ref": "#/components/schemas/Vec3"
+          },
+          "maxVolumeDb": {
+            "type": "number",
+            "maximum": 0,
+            "description": "Output ceiling in dBFS; louder cues are rejected"
+          }
+        },
+        "required": [
+          "deviceId",
+          "name",
+          "position",
+          "maxVolumeDb"
+        ],
+        "additionalProperties": false
+      },
+      "AuditEntry": {
+        "type": "object",
+        "properties": {
+          "seq": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "at": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "actor": {
+            "type": "string"
+          },
+          "action": {
+            "type": "string"
+          },
+          "entity": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "details": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "prevHash": {
+            "type": "string"
+          },
+          "hash": {
+            "type": "string",
+            "description": "SHA-256 over prevHash + entry; tampering breaks the chain"
+          }
+        },
+        "required": [
+          "seq",
+          "at",
+          "actor",
+          "action",
+          "entity",
+          "entityId",
+          "details",
+          "prevHash",
+          "hash"
+        ],
+        "additionalProperties": false
+      },
+      "AuditList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/AuditEntry"
+        }
+      },
+      "AuditVerification": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "brokenAtSeq": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "ok",
+          "count",
+          "brokenAtSeq"
+        ],
+        "additionalProperties": false
+      },
+      "Behavior": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "trigger": {
+            "type": "object",
+            "properties": {
+              "sensorId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "event": {
+                "$ref": "#/components/schemas/SensorEvent"
+              }
+            },
+            "required": [
+              "sensorId",
+              "event"
+            ],
+            "additionalProperties": false
+          },
+          "window": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "fromMs": {
+                    "$ref": "#/components/schemas/TimeMs"
+                  },
+                  "toMs": {
+                    "$ref": "#/components/schemas/TimeMs"
+                  }
+                },
+                "required": [
+                  "fromMs",
+                  "toMs"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Show-time window in which the trigger is honoured; null = whole show"
+          },
+          "blendMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 10000,
+            "description": "Blend in/out duration"
+          },
+          "cooldownMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 3600000
+          },
+          "durationMs": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 600000,
+            "description": "Clip length"
+          },
+          "tracks": {
+            "$ref": "#/components/schemas/Tracks"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "enabled",
+          "trigger",
+          "window",
+          "blendMs",
+          "cooldownMs",
+          "durationMs",
+          "tracks"
+        ],
+        "additionalProperties": false
+      },
+      "BehaviorSchedule": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "trigger": {
+            "type": "object",
+            "properties": {
+              "sensorId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "event": {
+                "$ref": "#/components/schemas/SensorEvent"
+              }
+            },
+            "required": [
+              "sensorId",
+              "event"
+            ],
+            "additionalProperties": false
+          },
+          "window": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "fromMs": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "toMs": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "fromMs",
+                  "toMs"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "blendMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "cooldownMs": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "durationMs": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "description": "Devices with clip data; two behaviors sharing a device never overlap"
+          }
+        },
+        "required": [
+          "id",
+          "trigger",
+          "window",
+          "blendMs",
+          "cooldownMs",
+          "durationMs",
+          "devices"
+        ],
+        "additionalProperties": false
+      },
+      "Box": {
+        "type": "object",
+        "properties": {
+          "min": {
+            "$ref": "#/components/schemas/Vec3"
+          },
+          "max": {
+            "$ref": "#/components/schemas/Vec3"
+          }
+        },
+        "required": [
+          "min",
+          "max"
+        ],
+        "additionalProperties": false,
+        "description": "Axis-aligned box in meters"
+      },
+      "CharacterDefinition": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "number",
+            "const": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "assetId": {
+                    "$ref": "#/components/schemas/Sha256"
+                  }
+                },
+                "required": [
+                  "assetId"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "GLB model asset; null renders placeholder geometry"
+          },
+          "footprint": {
+            "type": "object",
+            "properties": {
+              "size": {
+                "$ref": "#/components/schemas/Vec3"
+              }
+            },
+            "required": [
+              "size"
+            ],
+            "additionalProperties": false,
+            "description": "Bounding box of the full range of motion, used for stage boundary checks"
+          },
+          "joints": {
+            "maxItems": 256,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Joint"
+            }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "name",
+          "description",
+          "model",
+          "footprint",
+          "joints"
+        ],
+        "additionalProperties": false
+      },
+      "CharacterDocument": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "character"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "projectId": {
+            "description": "Owning project; access is granted per project",
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "draftVersion": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Optimistic-concurrency token for the draft"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "updatedBy": {
+            "type": "string"
+          },
+          "latestRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latestApprovedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "draft": {
+            "$ref": "#/components/schemas/CharacterDefinition"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "projectId",
+          "name",
+          "draftVersion",
+          "createdAt",
+          "createdBy",
+          "updatedAt",
+          "updatedBy",
+          "latestRevision",
+          "latestApprovedRevision",
+          "draft"
+        ],
+        "additionalProperties": false
+      },
+      "CreateDeploymentRequest": {
+        "type": "object",
+        "properties": {
+          "showId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "showId",
+          "revision"
+        ],
+        "additionalProperties": false
+      },
+      "CreateDocumentRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "character"
+              },
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "projectId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "draft": {
+                "$ref": "#/components/schemas/CharacterDefinition"
+              }
+            },
+            "required": [
+              "kind",
+              "id",
+              "projectId",
+              "draft"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "environment"
+              },
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "projectId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "draft": {
+                "$ref": "#/components/schemas/EnvironmentDefinition"
+              }
+            },
+            "required": [
+              "kind",
+              "id",
+              "projectId",
+              "draft"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "show"
+              },
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "projectId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "draft": {
+                "$ref": "#/components/schemas/ShowDefinition"
+              }
+            },
+            "required": [
+              "kind",
+              "id",
+              "projectId",
+              "draft"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "CreateProjectRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "description": {
+            "default": "",
+            "type": "string",
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description"
+        ],
+        "additionalProperties": false
+      },
+      "Deployment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "environmentId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "showId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string"
+          },
+          "sha256": {
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "targets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "deviceId": {
+                  "$ref": "#/components/schemas/Id"
+                },
+                "status": {
+                  "$ref": "#/components/schemas/TargetStatus"
+                },
+                "reason": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "deviceId",
+                "status",
+                "reason"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "goodToGo": {
+            "type": "boolean",
+            "description": "Every target device reports the bundle staged and verified"
+          }
+        },
+        "required": [
+          "id",
+          "environmentId",
+          "showId",
+          "revision",
+          "name",
+          "sha256",
+          "createdBy",
+          "createdAt",
+          "targets",
+          "goodToGo"
+        ],
+        "additionalProperties": false
+      },
+      "DeploymentList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Deployment"
+        }
+      },
+      "DeployMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "deploy"
+          },
+          "opId": {
+            "type": "string"
+          },
+          "showId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sha256": {
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "url": {
+            "type": "string",
+            "description": "Path of the bundle, relative to the fleet manager base URL"
+          },
+          "signature": {
+            "type": "string",
+            "description": "Base64 RSA-SHA256 (PKCS#1 v1.5) signature of the bundle bytes"
+          }
+        },
+        "required": [
+          "type",
+          "opId",
+          "showId",
+          "revision",
+          "sha256",
+          "url",
+          "signature"
+        ],
+        "additionalProperties": false
+      },
+      "Device": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "environmentId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DeviceKind"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DeviceState"
+          },
+          "firmware": {
+            "type": "string"
+          },
+          "characterRef": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "staged": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StagedShow"
+            }
+          },
+          "active": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActiveShow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fault": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lastSeenAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "environmentId",
+          "kind",
+          "online",
+          "state",
+          "firmware",
+          "characterRef",
+          "staged",
+          "active",
+          "fault",
+          "lastSeenAt"
+        ],
+        "additionalProperties": false
+      },
+      "DeviceKind": {
+        "type": "string",
+        "enum": [
+          "doll",
+          "light",
+          "audio",
+          "sensor"
+        ]
+      },
+      "DeviceList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Device"
+        }
+      },
+      "DevicePayload": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/DollPayload"
+          },
+          {
+            "$ref": "#/components/schemas/LightPayload"
+          },
+          {
+            "$ref": "#/components/schemas/AudioPayload"
+          },
+          {
+            "$ref": "#/components/schemas/SensorPayload"
+          }
+        ]
+      },
+      "DeviceState": {
+        "type": "string",
+        "enum": [
+          "idle",
+          "ready",
+          "armed",
+          "running",
+          "estopped",
+          "faulted"
+        ],
+        "description": "idle: nothing staged; ready: >=1 show staged; armed: launch scheduled; running; estopped: latched until reset; faulted"
+      },
+      "DeviceToFleet": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/HelloMsg"
+          },
+          {
+            "$ref": "#/components/schemas/StatusMsg"
+          },
+          {
+            "$ref": "#/components/schemas/AckMsg"
+          },
+          {
+            "$ref": "#/components/schemas/SensorEventMsg"
+          }
+        ]
+      },
+      "DevLoginRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "roles": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "roles"
+        ],
+        "additionalProperties": false,
+        "description": "Development stand-in for OIDC single sign-on"
+      },
+      "DevLoginResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "user": {
+            "$ref": "#/components/schemas/User"
+          }
+        },
+        "required": [
+          "token",
+          "user"
+        ],
+        "additionalProperties": false
+      },
+      "DocKind": {
+        "type": "string",
+        "enum": [
+          "character",
+          "environment",
+          "show"
+        ]
+      },
+      "DocRef": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "revision"
+        ],
+        "additionalProperties": false,
+        "description": "Pin to an immutable, published document revision"
+      },
+      "DocumentList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/DocumentSummary"
+        }
+      },
+      "DocumentSummary": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/DocKind"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "projectId": {
+            "description": "Owning project; access is granted per project",
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "draftVersion": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Optimistic-concurrency token for the draft"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "updatedBy": {
+            "type": "string"
+          },
+          "latestRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latestApprovedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "projectId",
+          "name",
+          "draftVersion",
+          "createdAt",
+          "createdBy",
+          "updatedAt",
+          "updatedBy",
+          "latestRevision",
+          "latestApprovedRevision"
+        ],
+        "additionalProperties": false
+      },
+      "DollPayload": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "doll"
+          },
+          "character": {
+            "type": "object",
+            "properties": {
+              "ref": {
+                "$ref": "#/components/schemas/DocRef"
+              },
+              "joints": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/JointLimits"
+                }
+              }
+            },
+            "required": [
+              "ref",
+              "joints"
+            ],
+            "additionalProperties": false
+          },
+          "motion": {
+            "$ref": "#/components/schemas/MotionTracks"
+          },
+          "behaviorMotion": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MotionTracks"
+            },
+            "description": "behavior id -> clip motion"
+          }
+        },
+        "required": [
+          "kind",
+          "character",
+          "motion",
+          "behaviorMotion"
+        ],
+        "additionalProperties": false
+      },
+      "EnvironmentCommand": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "reason": {
+            "type": "string",
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "environmentId"
+        ],
+        "additionalProperties": false
+      },
+      "EnvironmentDefinition": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "number",
+            "const": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "stage": {
+            "description": "Show boundary; every figure footprint must stay inside",
+            "$ref": "#/components/schemas/Box"
+          },
+          "keepOut": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KeepOutZone"
+            }
+          },
+          "ambient": {
+            "type": "object",
+            "properties": {
+              "color": {
+                "$ref": "#/components/schemas/HexColor"
+              },
+              "intensity": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "color",
+              "intensity"
+            ],
+            "additionalProperties": false
+          },
+          "palette": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PaletteColor"
+            }
+          },
+          "placements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Placement"
+            }
+          },
+          "lights": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LightFixture"
+            }
+          },
+          "audio": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AudioZone"
+            }
+          },
+          "sensors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Sensor"
+            }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "name",
+          "description",
+          "stage",
+          "keepOut",
+          "ambient",
+          "palette",
+          "placements",
+          "lights",
+          "audio",
+          "sensors"
+        ],
+        "additionalProperties": false
+      },
+      "EnvironmentDocument": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "environment"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "projectId": {
+            "description": "Owning project; access is granted per project",
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "draftVersion": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Optimistic-concurrency token for the draft"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "updatedBy": {
+            "type": "string"
+          },
+          "latestRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latestApprovedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "draft": {
+            "$ref": "#/components/schemas/EnvironmentDefinition"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "projectId",
+          "name",
+          "draftVersion",
+          "createdAt",
+          "createdBy",
+          "updatedAt",
+          "updatedBy",
+          "latestRevision",
+          "latestApprovedRevision",
+          "draft"
+        ],
+        "additionalProperties": false
+      },
+      "EnvironmentStatus": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "environmentRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "expectedDevices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "deviceId": {
+                  "$ref": "#/components/schemas/Id"
+                },
+                "kind": {
+                  "$ref": "#/components/schemas/DeviceKind"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "deviceId",
+                "kind",
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Device"
+            }
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ShowRun"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estop": {
+            "$ref": "#/components/schemas/EstopState"
+          },
+          "prepared": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PreparedShow"
+            }
+          },
+          "serverTime": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "environmentId",
+          "environmentRevision",
+          "expectedDevices",
+          "devices",
+          "run",
+          "estop",
+          "prepared",
+          "serverTime"
+        ],
+        "additionalProperties": false
+      },
+      "ErrorMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "error"
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "code",
+          "message"
+        ],
+        "additionalProperties": false
+      },
+      "EstopMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "estop"
+          },
+          "opId": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "opId",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "EstopState": {
+        "type": "object",
+        "properties": {
+          "active": {
+            "type": "boolean"
+          },
+          "at": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "active",
+          "at",
+          "by",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "FleetToDevice": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/WelcomeMsg"
+          },
+          {
+            "$ref": "#/components/schemas/DeployMsg"
+          },
+          {
+            "$ref": "#/components/schemas/RemoveMsg"
+          },
+          {
+            "$ref": "#/components/schemas/LaunchMsg"
+          },
+          {
+            "$ref": "#/components/schemas/StopMsg"
+          },
+          {
+            "$ref": "#/components/schemas/EstopMsg"
+          },
+          {
+            "$ref": "#/components/schemas/ResetMsg"
+          },
+          {
+            "$ref": "#/components/schemas/SimulateSensorMsg"
+          },
+          {
+            "$ref": "#/components/schemas/ErrorMsg"
+          }
+        ]
+      },
+      "Health": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok"
+          },
+          "version": {
+            "type": "string"
+          },
+          "uptimeS": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "status",
+          "version",
+          "uptimeS"
+        ],
+        "additionalProperties": false
+      },
+      "HelloMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "hello"
+          },
+          "protocolVersion": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "environmentId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DeviceKind"
+          },
+          "firmware": {
+            "type": "string"
+          },
+          "characterRef": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocRef"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Definition loaded on the controller (figures only)"
+          },
+          "token": {
+            "type": "string",
+            "description": "Device credential issued at provisioning"
+          }
+        },
+        "required": [
+          "type",
+          "protocolVersion",
+          "deviceId",
+          "environmentId",
+          "kind",
+          "firmware",
+          "characterRef",
+          "token"
+        ],
+        "additionalProperties": false
+      },
+      "HexColor": {
+        "type": "string",
+        "pattern": "^#[0-9a-fA-F]{6}$"
+      },
+      "Id": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9_-]{0,63}$",
+        "description": "Stable, human-readable identifier"
+      },
+      "Interp": {
+        "type": "string",
+        "enum": [
+          "linear",
+          "ease",
+          "step"
+        ],
+        "description": "Interpolation from this key to the next one"
+      },
+      "Issue": {
+        "type": "object",
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": [
+              "error",
+              "warning"
+            ]
+          },
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "path": {
+            "type": "array",
+            "items": {
+              "type": [
+                "string",
+                "number"
+              ]
+            }
+          },
+          "deviceId": {
+            "type": "string"
+          },
+          "joint": {
+            "type": "string"
+          },
+          "index": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "t": {
+            "type": "number"
+          },
+          "behaviorId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "severity",
+          "code",
+          "message",
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "Joint": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "description": "Logical joint name referenced by show tracks"
+          },
+          "node": {
+            "type": "string",
+            "minLength": 1,
+            "description": "glTF node this joint rotates/translates"
+          },
+          "type": {
+            "$ref": "#/components/schemas/JointType"
+          },
+          "axis": {
+            "description": "Unit axis in the node local frame",
+            "$ref": "#/components/schemas/Vec3"
+          },
+          "min": {
+            "type": "number",
+            "description": "Lower limit: degrees (revolute) or meters (prismatic)"
+          },
+          "max": {
+            "type": "number",
+            "description": "Upper limit: degrees (revolute) or meters (prismatic)"
+          },
+          "home": {
+            "type": "number",
+            "description": "Safe rest position; shows start from and return to it"
+          },
+          "maxVelocity": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "deg/s (revolute) or m/s (prismatic)"
+          }
+        },
+        "required": [
+          "name",
+          "node",
+          "type",
+          "axis",
+          "min",
+          "max",
+          "home",
+          "maxVelocity"
+        ],
+        "additionalProperties": false
+      },
+      "JointLimits": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$",
+            "description": "Logical joint name referenced by show tracks"
+          },
+          "type": {
+            "$ref": "#/components/schemas/JointType"
+          },
+          "min": {
+            "type": "number",
+            "description": "Lower limit: degrees (revolute) or meters (prismatic)"
+          },
+          "max": {
+            "type": "number",
+            "description": "Upper limit: degrees (revolute) or meters (prismatic)"
+          },
+          "home": {
+            "type": "number",
+            "description": "Safe rest position; shows start from and return to it"
+          },
+          "maxVelocity": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "deg/s (revolute) or m/s (prismatic)"
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "min",
+          "max",
+          "home",
+          "maxVelocity"
+        ],
+        "additionalProperties": false
+      },
+      "JointType": {
+        "type": "string",
+        "enum": [
+          "revolute",
+          "prismatic"
+        ]
+      },
+      "KeepOutZone": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "box": {
+            "$ref": "#/components/schemas/Box"
+          }
+        },
+        "required": [
+          "name",
+          "box"
+        ],
+        "additionalProperties": false,
+        "description": "Guest area or walkway no figure footprint may reach"
+      },
+      "LaunchMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "launch"
+          },
+          "opId": {
+            "type": "string"
+          },
+          "sha256": {
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "startAt": {
+            "type": "number",
+            "description": "Epoch ms (fleet clock) at which every device starts"
+          }
+        },
+        "required": [
+          "type",
+          "opId",
+          "sha256",
+          "startAt"
+        ],
+        "additionalProperties": false
+      },
+      "LaunchRequest": {
+        "type": "object",
+        "properties": {
+          "showId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "zoneClearConfirmed": {
+            "type": "boolean",
+            "const": true,
+            "description": "Operator confirms the show zone is clear"
+          }
+        },
+        "required": [
+          "showId",
+          "revision",
+          "zoneClearConfirmed"
+        ],
+        "additionalProperties": false
+      },
+      "LightFixture": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "position": {
+            "$ref": "#/components/schemas/Vec3"
+          },
+          "target": {
+            "description": "Point the fixture aims at",
+            "$ref": "#/components/schemas/Vec3"
+          },
+          "dmx": {
+            "type": "object",
+            "properties": {
+              "universe": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 32767
+              },
+              "address": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 512
+              }
+            },
+            "required": [
+              "universe",
+              "address"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "deviceId",
+          "name",
+          "position",
+          "target",
+          "dmx"
+        ],
+        "additionalProperties": false
+      },
+      "LightKey": {
+        "type": "object",
+        "properties": {
+          "t": {
+            "$ref": "#/components/schemas/TimeMs"
+          },
+          "color": {
+            "$ref": "#/components/schemas/HexColor"
+          },
+          "intensity": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "interp": {
+            "$ref": "#/components/schemas/Interp"
+          }
+        },
+        "required": [
+          "t",
+          "color",
+          "intensity",
+          "interp"
+        ],
+        "additionalProperties": false
+      },
+      "LightPayload": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "light"
+          },
+          "dmx": {
+            "type": "object",
+            "properties": {
+              "universe": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "address": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "universe",
+              "address"
+            ],
+            "additionalProperties": false
+          },
+          "keys": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LightKey"
+            }
+          },
+          "behaviorKeys": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/LightKey"
+              }
+            }
+          }
+        },
+        "required": [
+          "kind",
+          "dmx",
+          "keys",
+          "behaviorKeys"
+        ],
+        "additionalProperties": false
+      },
+      "MotionKey": {
+        "type": "object",
+        "properties": {
+          "t": {
+            "$ref": "#/components/schemas/TimeMs"
+          },
+          "v": {
+            "type": "number",
+            "description": "Joint position (deg or m)"
+          },
+          "interp": {
+            "$ref": "#/components/schemas/Interp"
+          }
+        },
+        "required": [
+          "t",
+          "v",
+          "interp"
+        ],
+        "additionalProperties": false
+      },
+      "MotionTracks": {
+        "type": "object",
+        "propertyNames": {
+          "type": "string"
+        },
+        "additionalProperties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/components/schemas/MotionKey"
+          }
+        },
+        "description": "joint name -> keys (sorted by t)"
+      },
+      "PaletteColor": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "color": {
+            "$ref": "#/components/schemas/HexColor"
+          }
+        },
+        "required": [
+          "name",
+          "color"
+        ],
+        "additionalProperties": false
+      },
+      "Person": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "displayName",
+          "title"
+        ],
+        "additionalProperties": false,
+        "description": "Workspace directory entry (from the identity provider in production)"
+      },
+      "Placement": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "description": "Figure controller id in this attraction",
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "character": {
+            "description": "Pinned character definition revision",
+            "$ref": "#/components/schemas/DocRef"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Vec3"
+          },
+          "rotationY": {
+            "type": "number",
+            "description": "Yaw in degrees"
+          }
+        },
+        "required": [
+          "deviceId",
+          "name",
+          "character",
+          "position",
+          "rotationY"
+        ],
+        "additionalProperties": false
+      },
+      "PreparedShow": {
+        "type": "object",
+        "properties": {
+          "showId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "sha256": {
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "name": {
+            "type": "string"
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "goodToGo": {
+            "type": "boolean"
+          },
+          "stagedOn": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "targets": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "showId",
+          "revision",
+          "sha256",
+          "name",
+          "durationMs",
+          "goodToGo",
+          "stagedOn",
+          "targets"
+        ],
+        "additionalProperties": false
+      },
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "detail": {
+            "type": "string"
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            }
+          },
+          "reasons": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "myRole": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectRole"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Your role in this project; null for admins who are not members"
+          },
+          "members": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProjectMember"
+            }
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "character": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "environment": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "show": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "character",
+              "environment",
+              "show"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "description",
+          "createdAt",
+          "createdBy",
+          "myRole",
+          "members",
+          "counts"
+        ],
+        "additionalProperties": false
+      },
+      "ProjectList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Project"
+        }
+      },
+      "ProjectMember": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/ProjectRole"
+          },
+          "addedBy": {
+            "type": "string"
+          },
+          "addedAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          }
+        },
+        "required": [
+          "user",
+          "role",
+          "addedBy",
+          "addedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ProjectRole": {
+        "type": "string",
+        "enum": [
+          "owner",
+          "editor",
+          "reviewer",
+          "operator",
+          "viewer"
+        ],
+        "description": "owner: everything incl. members; editor: author documents; reviewer: approve/reject; operator: deploy/launch; viewer: read"
+      },
+      "ProvisionedDevice": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DeviceKind"
+          },
+          "name": {
+            "type": "string"
+          },
+          "characterRef": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DocRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "deviceId",
+          "kind",
+          "name",
+          "characterRef",
+          "token"
+        ],
+        "additionalProperties": false
+      },
+      "ProvisioningResponse": {
+        "type": "object",
+        "properties": {
+          "protocolVersion": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "environment": {
+            "$ref": "#/components/schemas/DocRef"
+          },
+          "layout": {
+            "description": "The attraction as installed (stage, figures, fixtures, speakers, sensors); digital twins build their scene from it",
+            "$ref": "#/components/schemas/EnvironmentDefinition"
+          },
+          "devices": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ProvisionedDevice"
+            }
+          },
+          "characters": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CharacterDefinition"
+            },
+            "description": "\"id@revision\" -> definition"
+          },
+          "signingPublicKeyPem": {
+            "type": "string",
+            "description": "Devices pin this key and reject unsigned bundles"
+          }
+        },
+        "required": [
+          "protocolVersion",
+          "environment",
+          "layout",
+          "devices",
+          "characters",
+          "signingPublicKeyPem"
+        ],
+        "additionalProperties": false
+      },
+      "PublishRequest": {
+        "type": "object",
+        "properties": {
+          "draftVersion": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Publish exactly the draft the author reviewed"
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "draftVersion",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "RemoveMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "remove"
+          },
+          "opId": {
+            "type": "string"
+          },
+          "sha256": {
+            "$ref": "#/components/schemas/Sha256"
+          }
+        },
+        "required": [
+          "type",
+          "opId",
+          "sha256"
+        ],
+        "additionalProperties": false
+      },
+      "ResetMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "reset"
+          },
+          "opId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "opId"
+        ],
+        "additionalProperties": false
+      },
+      "ReviewRequest": {
+        "type": "object",
+        "properties": {
+          "note": {
+            "type": "string",
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "RevisionDetail": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "docId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "kind": {
+                "type": "string",
+                "const": "character"
+              },
+              "revision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "name": {
+                "type": "string"
+              },
+              "sha256": {
+                "description": "Hash of the canonical revision content",
+                "$ref": "#/components/schemas/Sha256"
+              },
+              "status": {
+                "$ref": "#/components/schemas/RevisionStatus"
+              },
+              "note": {
+                "type": "string"
+              },
+              "publishedBy": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "reviewedBy": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reviewedAt": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Timestamp"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reviewNote": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "bundleSha256": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Sha256"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Compiled bundle (shows only)"
+              },
+              "signed": {
+                "type": "boolean"
+              },
+              "content": {
+                "$ref": "#/components/schemas/CharacterDefinition"
+              }
+            },
+            "required": [
+              "docId",
+              "kind",
+              "revision",
+              "name",
+              "sha256",
+              "status",
+              "note",
+              "publishedBy",
+              "publishedAt",
+              "reviewedBy",
+              "reviewedAt",
+              "reviewNote",
+              "bundleSha256",
+              "signed",
+              "content"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "docId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "kind": {
+                "type": "string",
+                "const": "environment"
+              },
+              "revision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "name": {
+                "type": "string"
+              },
+              "sha256": {
+                "description": "Hash of the canonical revision content",
+                "$ref": "#/components/schemas/Sha256"
+              },
+              "status": {
+                "$ref": "#/components/schemas/RevisionStatus"
+              },
+              "note": {
+                "type": "string"
+              },
+              "publishedBy": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "reviewedBy": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reviewedAt": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Timestamp"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reviewNote": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "bundleSha256": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Sha256"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Compiled bundle (shows only)"
+              },
+              "signed": {
+                "type": "boolean"
+              },
+              "content": {
+                "$ref": "#/components/schemas/EnvironmentDefinition"
+              }
+            },
+            "required": [
+              "docId",
+              "kind",
+              "revision",
+              "name",
+              "sha256",
+              "status",
+              "note",
+              "publishedBy",
+              "publishedAt",
+              "reviewedBy",
+              "reviewedAt",
+              "reviewNote",
+              "bundleSha256",
+              "signed",
+              "content"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "docId": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "kind": {
+                "type": "string",
+                "const": "show"
+              },
+              "revision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "name": {
+                "type": "string"
+              },
+              "sha256": {
+                "description": "Hash of the canonical revision content",
+                "$ref": "#/components/schemas/Sha256"
+              },
+              "status": {
+                "$ref": "#/components/schemas/RevisionStatus"
+              },
+              "note": {
+                "type": "string"
+              },
+              "publishedBy": {
+                "type": "string"
+              },
+              "publishedAt": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "reviewedBy": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reviewedAt": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Timestamp"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "reviewNote": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "bundleSha256": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/Sha256"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Compiled bundle (shows only)"
+              },
+              "signed": {
+                "type": "boolean"
+              },
+              "content": {
+                "$ref": "#/components/schemas/ShowDefinition"
+              }
+            },
+            "required": [
+              "docId",
+              "kind",
+              "revision",
+              "name",
+              "sha256",
+              "status",
+              "note",
+              "publishedBy",
+              "publishedAt",
+              "reviewedBy",
+              "reviewedAt",
+              "reviewNote",
+              "bundleSha256",
+              "signed",
+              "content"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "RevisionList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/RevisionSummary"
+        }
+      },
+      "RevisionStatus": {
+        "type": "string",
+        "enum": [
+          "published",
+          "approved",
+          "rejected"
+        ],
+        "description": "Shows need safety approval before deployment"
+      },
+      "RevisionSummary": {
+        "type": "object",
+        "properties": {
+          "docId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/DocKind"
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string"
+          },
+          "sha256": {
+            "description": "Hash of the canonical revision content",
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RevisionStatus"
+          },
+          "note": {
+            "type": "string"
+          },
+          "publishedBy": {
+            "type": "string"
+          },
+          "publishedAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "reviewedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reviewedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewNote": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bundleSha256": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Sha256"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Compiled bundle (shows only)"
+          },
+          "signed": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "docId",
+          "kind",
+          "revision",
+          "name",
+          "sha256",
+          "status",
+          "note",
+          "publishedBy",
+          "publishedAt",
+          "reviewedBy",
+          "reviewedAt",
+          "reviewNote",
+          "bundleSha256",
+          "signed"
+        ],
+        "additionalProperties": false
+      },
+      "Role": {
+        "type": "string",
+        "enum": [
+          "engineer",
+          "safety",
+          "operator",
+          "admin"
+        ],
+        "description": "engineer: author; safety: approve; operator: run shows"
+      },
+      "RunStatus": {
+        "type": "string",
+        "enum": [
+          "scheduled",
+          "running",
+          "completed",
+          "stopped"
+        ]
+      },
+      "SaveDraftRequest": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "character"
+              },
+              "draftVersion": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "draft": {
+                "$ref": "#/components/schemas/CharacterDefinition"
+              }
+            },
+            "required": [
+              "kind",
+              "draftVersion",
+              "draft"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "environment"
+              },
+              "draftVersion": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "draft": {
+                "$ref": "#/components/schemas/EnvironmentDefinition"
+              }
+            },
+            "required": [
+              "kind",
+              "draftVersion",
+              "draft"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "kind": {
+                "type": "string",
+                "const": "show"
+              },
+              "draftVersion": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "draft": {
+                "$ref": "#/components/schemas/ShowDefinition"
+              }
+            },
+            "required": [
+              "kind",
+              "draftVersion",
+              "draft"
+            ],
+            "additionalProperties": false
+          }
+        ],
+        "description": "draftVersion must match the stored draft, otherwise 409 (someone else saved first)"
+      },
+      "Sensor": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "type": {
+            "$ref": "#/components/schemas/SensorType"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Vec3"
+          },
+          "range": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Detection radius in meters"
+          }
+        },
+        "required": [
+          "deviceId",
+          "name",
+          "type",
+          "position",
+          "range"
+        ],
+        "additionalProperties": false
+      },
+      "SensorEvent": {
+        "type": "string",
+        "enum": [
+          "enter",
+          "exit",
+          "press"
+        ]
+      },
+      "SensorEventMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "sensorEvent"
+          },
+          "sensorId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "event": {
+            "$ref": "#/components/schemas/SensorEvent"
+          },
+          "at": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "type",
+          "sensorId",
+          "event",
+          "at"
+        ],
+        "additionalProperties": false,
+        "description": "Telemetry only: reactions are decided locally in the park"
+      },
+      "SensorPayload": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "sensor"
+          },
+          "type": {
+            "$ref": "#/components/schemas/SensorType"
+          },
+          "range": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "kind",
+          "type",
+          "range"
+        ],
+        "additionalProperties": false
+      },
+      "SensorType": {
+        "type": "string",
+        "enum": [
+          "presence",
+          "proximity",
+          "button"
+        ]
+      },
+      "SetMemberRequest": {
+        "type": "object",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/ProjectRole"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "additionalProperties": false
+      },
+      "Sha256": {
+        "type": "string",
+        "pattern": "^[a-f0-9]{64}$",
+        "description": "SHA-256 hex digest, used as a content address"
+      },
+      "ShowBundle": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "number",
+            "const": 1
+          },
+          "show": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "revision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "revision",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "environment": {
+            "$ref": "#/components/schemas/DocRef"
+          },
+          "durationMs": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "behaviors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BehaviorSchedule"
+            }
+          },
+          "devices": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/DevicePayload"
+            }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "show",
+          "environment",
+          "durationMs",
+          "behaviors",
+          "devices"
+        ],
+        "additionalProperties": false
+      },
+      "ShowDefinition": {
+        "type": "object",
+        "properties": {
+          "schemaVersion": {
+            "type": "number",
+            "const": 1
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "environment": {
+            "description": "Pinned environment revision",
+            "$ref": "#/components/schemas/DocRef"
+          },
+          "durationMs": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 3600000
+          },
+          "tracks": {
+            "$ref": "#/components/schemas/Tracks"
+          },
+          "behaviors": {
+            "maxItems": 64,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Behavior"
+            }
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "name",
+          "description",
+          "environment",
+          "durationMs",
+          "tracks",
+          "behaviors"
+        ],
+        "additionalProperties": false
+      },
+      "ShowDocument": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "const": "show"
+          },
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "projectId": {
+            "description": "Owning project; access is granted per project",
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "draftVersion": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Optimistic-concurrency token for the draft"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "createdBy": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "updatedBy": {
+            "type": "string"
+          },
+          "latestRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "latestApprovedRevision": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "draft": {
+            "$ref": "#/components/schemas/ShowDefinition"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "projectId",
+          "name",
+          "draftVersion",
+          "createdAt",
+          "createdBy",
+          "updatedAt",
+          "updatedBy",
+          "latestRevision",
+          "latestApprovedRevision",
+          "draft"
+        ],
+        "additionalProperties": false
+      },
+      "ShowRun": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "environmentId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "showId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string"
+          },
+          "sha256": {
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "startAt": {
+            "type": "number",
+            "description": "Epoch ms"
+          },
+          "durationMs": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "launchedBy": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/RunStatus"
+          },
+          "stoppedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stopReason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "environmentId",
+          "showId",
+          "revision",
+          "name",
+          "sha256",
+          "startAt",
+          "durationMs",
+          "launchedBy",
+          "status",
+          "stoppedAt",
+          "stopReason"
+        ],
+        "additionalProperties": false
+      },
+      "SigningKey": {
+        "type": "object",
+        "properties": {
+          "publicKeyPem": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "publicKeyPem"
+        ],
+        "additionalProperties": false
+      },
+      "SimulateSensorMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "simulateSensor"
+          },
+          "opId": {
+            "type": "string"
+          },
+          "event": {
+            "$ref": "#/components/schemas/SensorEvent"
+          }
+        },
+        "required": [
+          "type",
+          "opId",
+          "event"
+        ],
+        "additionalProperties": false,
+        "description": "Development only: stands in for a guest"
+      },
+      "SimulateSensorRequest": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "event": {
+            "type": "string",
+            "enum": [
+              "enter",
+              "exit",
+              "press"
+            ]
+          }
+        },
+        "required": [
+          "environmentId",
+          "event"
+        ],
+        "additionalProperties": false
+      },
+      "StagedShow": {
+        "type": "object",
+        "properties": {
+          "sha256": {
+            "$ref": "#/components/schemas/Sha256"
+          },
+          "showId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "$ref": "#/components/schemas/StagedStatus"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "sha256",
+          "showId",
+          "revision",
+          "status",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "StagedStatus": {
+        "type": "string",
+        "enum": [
+          "downloading",
+          "staged",
+          "rejected"
+        ]
+      },
+      "StatusMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "status"
+          },
+          "state": {
+            "$ref": "#/components/schemas/DeviceState"
+          },
+          "staged": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StagedShow"
+            }
+          },
+          "active": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ActiveShow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fault": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "state",
+          "staged",
+          "active",
+          "fault"
+        ],
+        "additionalProperties": false
+      },
+      "StopMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "stop"
+          },
+          "opId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "opId"
+        ],
+        "additionalProperties": false
+      },
+      "StudioDocument": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/CharacterDocument"
+          },
+          {
+            "$ref": "#/components/schemas/EnvironmentDocument"
+          },
+          {
+            "$ref": "#/components/schemas/ShowDocument"
+          }
+        ]
+      },
+      "TargetStatus": {
+        "type": "string",
+        "enum": [
+          "pending",
+          "downloading",
+          "staged",
+          "rejected",
+          "offline"
+        ]
+      },
+      "TimeMs": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 9007199254740991,
+        "description": "Milliseconds from the start of the show (or clip)"
+      },
+      "Timestamp": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+      },
+      "Tracks": {
+        "type": "object",
+        "properties": {
+          "motion": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "additionalProperties": {
+              "$ref": "#/components/schemas/MotionTracks"
+            },
+            "description": "figure deviceId -> joint -> keys"
+          },
+          "lights": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/LightKey"
+              }
+            },
+            "description": "fixture deviceId -> keys"
+          },
+          "audio": {
+            "type": "object",
+            "propertyNames": {
+              "$ref": "#/components/schemas/Id"
+            },
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/AudioCue"
+              }
+            },
+            "description": "audio zone deviceId -> cues"
+          }
+        },
+        "required": [
+          "motion",
+          "lights",
+          "audio"
+        ],
+        "additionalProperties": false
+      },
+      "User": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Role"
+            }
+          }
+        },
+        "required": [
+          "name",
+          "roles"
+        ],
+        "additionalProperties": false
+      },
+      "ValidationReport": {
+        "type": "object",
+        "properties": {
+          "ok": {
+            "type": "boolean"
+          },
+          "errors": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "warnings": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "issues": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Issue"
+            }
+          }
+        },
+        "required": [
+          "ok",
+          "errors",
+          "warnings",
+          "issues"
+        ],
+        "additionalProperties": false
+      },
+      "Vec3": {
+        "type": "array",
+        "prefixItems": [
+          {
+            "type": "number"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "number"
+          }
+        ],
+        "items": false,
+        "minItems": 3,
+        "maxItems": 3,
+        "description": "[x, y, z] in meters. Y-up, right-handed (glTF convention)"
+      },
+      "WelcomeMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "welcome"
+          },
+          "serverTime": {
+            "type": "number",
+            "description": "Epoch ms; devices derive their clock offset from it"
+          },
+          "heartbeatMs": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "type",
+          "serverTime",
+          "heartbeatMs"
+        ],
+        "additionalProperties": false
+      },
+      "Workspace": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string"
+          },
+          "plan": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "sites": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "directory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Person"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "plan",
+          "region",
+          "sites",
+          "directory"
+        ],
+        "additionalProperties": false,
+        "description": "The tenant. Single, static workspace in this prototype"
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "device": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-device-token"
+      },
+      "provisioning": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "x-provisioning-token"
+      }
+    }
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "joints": [
+    {
+      "name": "head_turn",
+      "node": "head",
+      "type": "revolute",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "min": -70,
+      "max": 70,
+      "home": 0,
+      "maxVelocity": 80
+    },
+    {
+      "name": "lean",
+      "node": "chest",
+      "type": "revolute",
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "min": -15,
+      "max": 35,
+      "home": 0,
+      "maxVelocity": 40
+    },
+    {
+      "name": "torso_turn",
+      "node": "spine",
+      "type": "revolute",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "min": -40,
+      "max": 40,
+      "home": 0,
+      "maxVelocity": 45
+    },
+    {
+      "name": "wave_arm",
+      "node": "upperarm.l",
+      "type": "revolute",
+      "axis": [
+        0.998,
+        -0.06,
+        0
+      ],
+      "min": -80,
+      "max": 80,
+      "home": -70,
+      "maxVelocity": 120
+    },
+    {
+      "name": "wave_elbow",
+      "node": "lowerarm.l",
+      "type": "revolute",
+      "axis": [
+        0,
+        0,
+        -1
+      ],
+      "min": 0,
+      "max": 120,
+      "home": 15,
+      "maxVelocity": 150
+    },
+    {
+      "name": "knife_arm",
+      "node": "upperarm.r",
+      "type": "revolute",
+      "axis": [
+        0.998,
+        0.06,
+        0
+      ],
+      "min": -80,
+      "max": 40,
+      "home": -70,
+      "maxVelocity": 90
+    }
+  ]
+}

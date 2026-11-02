@@ -1,0 +1,18 @@
+{
+  "joints": [
+    {
+      "name": "lid_open",
+      "node": "chest_gold_lid",
+      "type": "revolute",
+      "axis": [
+        -1,
+        0,
+        0
+      ],
+      "min": 0,
+      "max": 100,
+      "home": 0,
+      "maxVelocity": 60
+    }
+  ]
+}

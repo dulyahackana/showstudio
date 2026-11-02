@@ -1,0 +1,18 @@
+{
+  "name": "@studio/playback",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Isomorphic show logic: interpolation, validation, bundle compiler, deterministic runtime",
+  "exports": {
+    ".": "./src/index.ts",
+    "./src/fixtures.ts": "./src/fixtures.ts"
+  },
+  "scripts": {
+    "gen:vectors": "bun scripts/gen-vectors.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@studio/schema": "workspace:*"
+  }
+}

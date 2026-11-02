@@ -1,0 +1,22 @@
+{
+  "name": "@studio/fleet-sim",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Headless simulated attraction: reference implementation of the device protocol",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "bun src/main.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@studio/playback": "workspace:*",
+    "@studio/schema": "workspace:*",
+    "ws": "^8.22.1"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.18.0"
+  }
+}

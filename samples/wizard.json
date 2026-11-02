@@ -1,0 +1,88 @@
+{
+  "joints": [
+    {
+      "name": "head_turn",
+      "node": "head",
+      "type": "revolute",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "min": -60,
+      "max": 60,
+      "home": 0,
+      "maxVelocity": 60
+    },
+    {
+      "name": "head_nod",
+      "node": "head",
+      "type": "revolute",
+      "axis": [
+        1,
+        0,
+        0
+      ],
+      "min": -20,
+      "max": 25,
+      "home": 0,
+      "maxVelocity": 45
+    },
+    {
+      "name": "torso_turn",
+      "node": "chest",
+      "type": "revolute",
+      "axis": [
+        0,
+        1,
+        0
+      ],
+      "min": -35,
+      "max": 35,
+      "home": 0,
+      "maxVelocity": 35
+    },
+    {
+      "name": "staff_raise",
+      "node": "upperarm.r",
+      "type": "revolute",
+      "axis": [
+        0.998,
+        0.06,
+        0
+      ],
+      "min": -80,
+      "max": 60,
+      "home": -70,
+      "maxVelocity": 60
+    },
+    {
+      "name": "staff_elbow",
+      "node": "lowerarm.r",
+      "type": "revolute",
+      "axis": [
+        0,
+        0,
+        1
+      ],
+      "min": 0,
+      "max": 110,
+      "home": 15,
+      "maxVelocity": 90
+    },
+    {
+      "name": "free_arm",
+      "node": "upperarm.l",
+      "type": "revolute",
+      "axis": [
+        0.998,
+        -0.06,
+        0
+      ],
+      "min": -80,
+      "max": 60,
+      "home": -70,
+      "maxVelocity": 60
+    }
+  ]
+}

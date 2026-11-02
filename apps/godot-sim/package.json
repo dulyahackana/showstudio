@@ -1,0 +1,10 @@
+{
+  "name": "@studio/godot-sim",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Godot 4 simulator: the attraction's controllers as a game-engine twin, same protocol as a park",
+  "scripts": {
+    "start": "bun ../../scripts/godot.ts run",
+    "test": "bun ../../scripts/godot.ts test"
+  }
+}

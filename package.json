@@ -1,0 +1,46 @@
+{
+  "name": "show-studio",
+  "private": true,
+  "type": "module",
+  "description": "Mechatronics animation studio: web editor, studio/fleet API, simulated fleet, Godot simulator",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "bun": ">=1.4.4"
+  },
+  "scripts": {
+    "dev": "bun run --filter @studio/api --filter @studio/editor --elide-lines 0 dev",
+    "fleet-sim": "bun apps/fleet-sim/src/main.ts",
+    "sim:godot": "bun scripts/godot.ts run",
+    "seed": "bun scripts/seed.ts",
+    "gen:samples": "bun scripts/gen-samples.ts",
+    "gen:contracts": "bun run --filter @studio/schema gen",
+    "gen:vectors": "bun run --filter @studio/playback gen:vectors",
+    "test": "bun test --timeout 30000 ./packages ./apps/api ./apps/editor/src",
+    "test:watch": "bun test --watch --timeout 30000 ./packages ./apps/api ./apps/editor/src",
+    "test:godot": "bun scripts/godot.ts test",
+    "typecheck": "bun run --filter '*' typecheck && tsc --noEmit -p scripts",
+    "lint": "biome check .",
+    "format": "biome check --write .",
+    "build": "bun run --filter @studio/editor --filter @studio/api build",
+    "e2e": "bun run --filter @studio/editor e2e",
+    "e2e:godot": "bun scripts/godot-e2e.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4",
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/functions": "4.5.1",
+    "@studio/playback": "workspace:*",
+    "@studio/schema": "workspace:*",
+    "@types/bun": "~1.4.4",
+    "@types/node": "^20.19.0",
+    "fast-check": "^4.10.2",
+    "typescript": "~5.9.3"
+  },
+  "overrides": {
+    "vite": "^7.3.7"
+  },
+  "packageManager": "bun@1.4.4"
+}
