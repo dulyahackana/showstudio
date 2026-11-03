@@ -1,5 +1,6 @@
 import type { HexColor, Vec3 } from '@studio/schema'
 import { type ComponentProps, useEffect, useRef, useState } from 'react'
+import { useEditable } from '@/components/editable'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
@@ -89,14 +90,16 @@ export function Vec3Input({
 }
 
 export function ColorInput({ value, onChange }: { value: HexColor; onChange: (v: HexColor) => void }) {
+  const editable = useEditable()
   return (
     <div className="flex items-center gap-2">
       <input
         type="color"
         aria-label="color"
         value={value}
+        disabled={!editable}
         onChange={(e) => onChange(e.target.value as HexColor)}
-        className="h-7 w-9 cursor-pointer rounded border bg-transparent"
+        className="h-7 w-9 cursor-pointer rounded border bg-transparent disabled:cursor-default"
       />
       <span className="font-mono text-xs text-muted-foreground">{value}</span>
     </div>

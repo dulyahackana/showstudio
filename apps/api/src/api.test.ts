@@ -143,18 +143,11 @@ beforeAll(async () => {
     ['priya', ['engineer']],
     ['sam', ['safety']],
     ['olga', ['operator']],
+    ['admin', ['admin']],
   ] as const) {
     tokens[name] = (await call(null, 'devLogin', { body: { name, roles: [...roles] } })).token
   }
-  // One project owns everything below; priya is in the workspace but not in it.
-  await call('alice', 'createProject', { body: { id: 'lab', name: 'Lab', description: '' } })
-  for (const [user, role] of [
-    ['tom', 'editor'],
-    ['sam', 'reviewer'],
-    ['olga', 'operator'],
-  ] as const) {
-    await call('alice', 'setProjectMember', { params: { projectId: 'lab', user }, body: { role } })
-  }
+  await call('admin', 'createLocation', { body: { id: 'hq', name: 'Headquarters', region: 'Burbank' } })
 })
 
 afterAll(async () => {
@@ -179,12 +172,12 @@ describe('studio + fleet end to end', () => {
 
   it('enforces authentication and roles from the contract', async () => {
     await fails(call(null, 'listDocuments'), 401)
-    await fails(call('olga', 'createDocument', { body: { kind: 'character', projectId: 'lab', id: 'robot', draft: robot } }), 403)
+    await fails(call('olga', 'createDocument', { body: { kind: 'character', id: 'robot', draft: robot } }), 403)
     await fails(call('alice', 'getDocument', { params: { id: 'Not An Id' } }), 400)
   })
 
   it('publishes characters and environments as immutable revisions', async () => {
-    await call('alice', 'createDocument', { body: { kind: 'character', projectId: 'lab', id: 'robot', draft: robot } })
+    await call('alice', 'createDocument', { body: { kind: 'character', id: 'robot', draft: robot } })
     expect(
       (await call('alice', 'publish', { params: { id: 'robot' }, body: { draftVersion: 1, note: 'v1' } })).revision,
     ).toBe(1)
@@ -193,7 +186,11 @@ describe('studio + fleet end to end', () => {
       409,
     )
     expect(again.detail).toContain('No changes')
-    await call('alice', 'createDocument', { body: { kind: 'environment', projectId: 'lab', id: 'lab', draft: lab } })
+    await fails(
+      call('alice', 'createDocument', { body: { kind: 'environment', locationId: 'nowhere', id: 'lab', draft: lab } }),
+      404,
+    )
+    await call('alice', 'createDocument', { body: { kind: 'environment', locationId: 'hq', id: 'lab', draft: lab } })
     await call('alice', 'publish', { params: { id: 'lab' }, body: { draftVersion: 1, note: '' } })
   })
 
@@ -212,7 +209,17 @@ describe('studio + fleet end to end', () => {
     show = JSON.parse(JSON.stringify(makeShow()).replaceAll('a'.repeat(64), audioId)) as ShowDefinition
     const broken = structuredClone(show)
     broken.tracks.motion['robot-01'] = { arm_pitch: [{ t: 3000, v: 500, interp: 'linear' }] }
-    await call('alice', 'createDocument', { body: { kind: 'show', projectId: 'lab', id: 'demo', draft: broken } })
+    // A project is one show: creating it creates the show, and its team is set per project.
+    const project = await call('alice', 'createProject', { body: { id: 'demo', draft: broken } })
+    expect(project).toMatchObject({ id: 'demo', name: broken.name, environmentId: 'lab', myRole: 'owner' })
+    expect(project.show).toMatchObject({ kind: 'show', projectId: 'demo', draftVersion: 1, latestRevision: null })
+    for (const [user, role] of [
+      ['tom', 'editor'],
+      ['sam', 'reviewer'],
+      ['olga', 'operator'],
+    ] as const) {
+      await call('alice', 'setProjectMember', { params: { projectId: 'demo', user }, body: { role } })
+    }
     const invalid = await fails(
       call('alice', 'publish', { params: { id: 'demo' }, body: { draftVersion: 1, note: '' } }),
       422,
@@ -376,47 +383,127 @@ describe('studio + fleet end to end', () => {
   })
 })
 
-describe('projects and access control', () => {
-  it('hides projects and their documents from non-members', async () => {
-    expect(await call('priya', 'listDocuments')).toEqual([])
-    expect(await call('priya', 'listProjects')).toEqual([])
-    await fails(call('priya', 'getDocument', { params: { id: 'robot' } }), 404)
-    await fails(call('priya', 'getProject', { params: { projectId: 'lab' } }), 404)
-    await fails(
-      call('priya', 'createDocument', { body: { kind: 'character', projectId: 'lab', id: 'intruder', draft: robot } }),
-      404,
+describe('several attractions at once', () => {
+  it('runs, launches and e-stops each attraction on its own', async () => {
+    const audio = (await call('alice', 'listAssets')).find((a) => a.kind === 'audio')
+    await call('alice', 'createDocument', {
+      body: { kind: 'environment', locationId: 'hq', id: 'annex', draft: { ...lab, name: 'Annex' } },
+    })
+    const envRev = await call('alice', 'publish', { params: { id: 'annex' }, body: { draftVersion: 1, note: 'annex' } })
+    const draft = JSON.parse(JSON.stringify(makeShow()).replaceAll('a'.repeat(64), audio?.id ?? '')) as ShowDefinition
+    draft.environment = { id: 'annex', revision: envRev.revision }
+    await call('alice', 'createProject', { body: { id: 'annex-show', draft } })
+    for (const [user, role] of [
+      ['sam', 'reviewer'],
+      ['olga', 'operator'],
+    ] as const) {
+      await call('alice', 'setProjectMember', { params: { projectId: 'annex-show', user }, body: { role } })
+    }
+    await call('alice', 'publish', { params: { id: 'annex-show' }, body: { draftVersion: 1, note: '' } })
+    await call('sam', 'approveRevision', { params: { id: 'annex-show', revision: 1 }, body: { note: 'ok' } })
+
+    // Same device ids as the lab, different attraction: the gateway keys devices by (attraction, id).
+    fleets.push(await startFleet({ apiUrl: url, environmentId: 'annex', provisioningToken: 'dev-provisioning-token' }))
+    const status = (environmentId: string) => call('olga', 'environmentStatus', { params: { environmentId } })
+    await waitFor(
+      () => call('olga', 'listDevices', { query: { environmentId: 'annex' } }),
+      (ds) => ds.length === 4 && ds.every((d) => d.online),
     )
-    expect(await call('priya', 'listDevices')).toEqual([])
+    await call('olga', 'createDeployment', { body: { showId: 'annex-show', revision: 1 } })
+    await waitFor(
+      () => status('annex'),
+      (s) => s.prepared.some((p) => p.goodToGo),
+    )
+
+    const labBefore = await status('lab')
+    await call('olga', 'launch', { body: { showId: 'annex-show', revision: 1, zoneClearConfirmed: true } })
+    await waitFor(
+      () => status('annex'),
+      (s) => s.run !== null && s.devices.every((d) => d.state !== 'ready'),
+    )
+    expect((await status('lab')).run?.id ?? null).toBe(labBefore.run?.id ?? null)
+
+    await call('olga', 'estop', { body: { environmentId: 'annex', reason: 'test' } })
+    await waitFor(
+      () => status('annex'),
+      (s) => s.devices.every((d) => d.state === 'estopped'),
+    )
+    const labNow = await status('lab')
+    expect(labNow.estop.active).toBe(false)
+    expect(labNow.devices.some((d) => d.state === 'estopped')).toBe(false)
+    await call('olga', 'resetEstop', { body: { environmentId: 'annex' } })
+  })
+})
+
+describe('projects and access control', () => {
+  it('shares locations and the library with the whole workspace', async () => {
+    expect((await call('priya', 'listLocations')).map((l) => l.id)).toEqual(['hq'])
+    const docs = await call('priya', 'listDocuments')
+    expect(docs.filter((d) => d.kind === 'character').map((d) => d.id)).toContain('robot')
+    expect(docs.find((d) => d.id === 'lab')).toMatchObject({ kind: 'environment', locationId: 'hq', projectId: null })
+    expect((await call('priya', 'listDevices', { query: { environmentId: 'lab' } })).length).toBeGreaterThan(0)
+    // Workspace roles still apply: an operator cannot edit the library, and only admins add locations.
+    const robotDoc = await call('olga', 'getDocument', { params: { id: 'robot' } })
+    await fails(
+      call('olga', 'saveDraft', {
+        params: { id: 'robot' },
+        body: { kind: 'character', draftVersion: robotDoc.draftVersion, draft: robot },
+      }),
+      403,
+    )
+    await fails(call('alice', 'createLocation', { body: { id: 'tokyo', name: 'Tokyo' } }), 403)
+  })
+
+  it('hides projects and their shows from non-members', async () => {
+    expect(await call('priya', 'listProjects')).toEqual([])
+    expect((await call('priya', 'listDocuments', { query: { kind: 'show' } })).length).toBe(0)
+    await fails(call('priya', 'getDocument', { params: { id: 'demo' } }), 404)
+    await fails(call('priya', 'getProject', { params: { projectId: 'demo' } }), 404)
+    await fails(call('priya', 'listRevisions', { params: { id: 'demo' } }), 404)
+  })
+
+  it('creates shows only through a project, one show per project', async () => {
+    const draft = (await call('alice', 'getDocument', { params: { id: 'demo' } })).draft as ShowDefinition
+    await fails(call('alice', 'createProject', { body: { id: 'demo', draft } }), 409)
+    await fails(
+      call('alice', 'createProject', {
+        body: { id: 'ghost', draft: { ...draft, environment: { id: 'lab', revision: 99 } } },
+      }),
+      400,
+    )
+    await fails(call('alice', 'createDocument', { body: { kind: 'show', id: 'loose', draft } as never }), 400)
   })
 
   it('grants exactly what the project role allows', async () => {
-    await call('alice', 'setProjectMember', { params: { projectId: 'lab', user: 'priya' }, body: { role: 'viewer' } })
-    const doc = await call('priya', 'getDocument', { params: { id: 'robot' } })
-    expect(doc.projectId).toBe('lab')
+    await call('alice', 'setProjectMember', { params: { projectId: 'demo', user: 'priya' }, body: { role: 'viewer' } })
+    const doc = await call('priya', 'getDocument', { params: { id: 'demo' } })
+    expect(doc.projectId).toBe('demo')
     await fails(
       call('priya', 'saveDraft', {
-        params: { id: 'robot' },
-        body: { kind: 'character', draftVersion: doc.draftVersion, draft: robot },
+        params: { id: 'demo' },
+        body: { kind: 'show', draftVersion: doc.draftVersion, draft: doc.draft as ShowDefinition },
       }),
       403,
     )
     // tom is an engineer (may deploy in general) but only an editor here: no fleet operations.
     await fails(call('tom', 'createDeployment', { body: { showId: 'demo', revision: 1 } }), 403)
     await fails(
-      call('tom', 'setProjectMember', { params: { projectId: 'lab', user: 'priya' }, body: { role: 'owner' } }),
+      call('tom', 'setProjectMember', { params: { projectId: 'demo', user: 'priya' }, body: { role: 'owner' } }),
       403,
     )
-    const project = await call('olga', 'getProject', { params: { projectId: 'lab' } })
+    const project = await call('olga', 'getProject', { params: { projectId: 'demo' } })
     expect(project.myRole).toBe('operator')
     expect(project.members.map((m) => [m.user, m.role])).toContainEqual(['priya', 'viewer'])
   })
 
   it('keeps at least one owner and audits membership changes', async () => {
-    await fails(call('alice', 'removeProjectMember', { params: { projectId: 'lab', user: 'alice' } }), 409)
-    await call('alice', 'removeProjectMember', { params: { projectId: 'lab', user: 'priya' } })
-    await fails(call('priya', 'getDocument', { params: { id: 'robot' } }), 404)
-    const audit = await call('sam', 'listAudit', { query: { limit: 200 } })
-    expect(audit.map((e) => e.action)).toEqual(expect.arrayContaining(['project.create', 'project.member.set', 'project.member.remove']))
+    await fails(call('alice', 'removeProjectMember', { params: { projectId: 'demo', user: 'alice' } }), 409)
+    await call('alice', 'removeProjectMember', { params: { projectId: 'demo', user: 'priya' } })
+    await fails(call('priya', 'getDocument', { params: { id: 'demo' } }), 404)
+    const audit = await call('sam', 'listAudit', { query: { limit: 300 } })
+    expect(audit.map((e) => e.action)).toEqual(
+      expect.arrayContaining(['location.create', 'project.create', 'project.member.set', 'project.member.remove']),
+    )
   })
 })
 

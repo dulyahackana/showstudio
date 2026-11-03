@@ -125,12 +125,13 @@ try {
   })
 
   token = (await call('devLogin', { body: { name: 'olga', roles: ['operator', 'engineer'] } })).token
+  const expected = (await status()).expectedDevices.length
   await waitFor(
-    'nine Godot controllers online',
+    `${expected} Godot controllers online`,
     () => call('listDevices', { query: { environmentId } }),
-    (ds) => ds.length === 9 && ds.every((d) => d.online && d.firmware.startsWith('godot-sim')),
+    (ds) => ds.length === expected && ds.every((d) => d.online && d.firmware.startsWith('godot-sim')),
   )
-  step('Godot provisioned and connected 9 controllers (dolls, lights, audio, sensors)')
+  step(`Godot provisioned and connected ${expected} controllers (figures, lights, audio, sensors)`)
 
   await call('createDeployment', { body: show })
   const ready = await waitFor('good to go', status, (s: EnvironmentStatus) =>

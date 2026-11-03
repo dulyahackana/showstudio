@@ -24,7 +24,7 @@ export const KIND = {
     text: 'text-light',
     soft: 'bg-light/10 border-light/25',
     dot: 'bg-light',
-    hex: '#f4c74f',
+    hex: '#f7d24f',
   },
   audio: {
     label: 'Audio',
@@ -42,11 +42,11 @@ export const KIND = {
     text: 'text-sensor',
     soft: 'bg-sensor/10 border-sensor/25',
     dot: 'bg-sensor',
-    hex: '#4cd6a2',
+    hex: '#f472b6',
   },
 } as const satisfies Record<DeviceKind, unknown>
 
-export const AMBER = '#f5a524'
+export const ACCENT = '#34d399'
 export const DANGER = '#f0554b'
 
 export function KindIcon({ kind, className }: { kind: DeviceKind; className?: string }) {
@@ -58,22 +58,26 @@ export function KindIcon({ kind, className }: { kind: DeviceKind; className?: st
 export function KindTile({ kind, className }: { kind: DeviceKind; className?: string }) {
   const k = KIND[kind]
   return (
-    <span className={cn('inline-flex size-7 shrink-0 items-center justify-center rounded-md border', k.soft, className)}>
+    <span
+      className={cn('inline-flex size-7 shrink-0 items-center justify-center rounded-md border', k.soft, className)}
+    >
       <k.icon className={cn('size-3.5', k.text)} />
     </span>
   )
 }
 
-export const STATE_STYLE: Record<DeviceState | 'offline', { dot: string; text: string; pulse?: boolean; label: string }> =
-  {
-    idle: { dot: 'bg-muted-foreground/50', text: 'text-muted-foreground', label: 'idle' },
-    ready: { dot: 'bg-sensor', text: 'text-sensor', label: 'ready' },
-    armed: { dot: 'bg-warn', text: 'text-warn', pulse: true, label: 'armed' },
-    running: { dot: 'bg-motion', text: 'text-motion', pulse: true, label: 'running' },
-    estopped: { dot: 'bg-danger', text: 'text-danger', label: 'e-stopped' },
-    faulted: { dot: 'bg-danger', text: 'text-danger', label: 'faulted' },
-    offline: { dot: 'border border-muted-foreground/60 bg-transparent', text: 'text-muted-foreground', label: 'offline' },
-  }
+export const STATE_STYLE: Record<
+  DeviceState | 'offline',
+  { dot: string; text: string; pulse?: boolean; label: string }
+> = {
+  idle: { dot: 'bg-muted-foreground/50', text: 'text-muted-foreground', label: 'idle' },
+  ready: { dot: 'bg-ok', text: 'text-ok', label: 'ready' },
+  armed: { dot: 'bg-warn', text: 'text-warn', pulse: true, label: 'armed' },
+  running: { dot: 'bg-motion', text: 'text-motion', pulse: true, label: 'running' },
+  estopped: { dot: 'bg-danger', text: 'text-danger', label: 'e-stopped' },
+  faulted: { dot: 'bg-danger', text: 'text-danger', label: 'faulted' },
+  offline: { dot: 'border border-muted-foreground/60 bg-transparent', text: 'text-muted-foreground', label: 'offline' },
+}
 
 export function StatusDot({ state, className }: { state: keyof typeof STATE_STYLE; className?: string }) {
   const s = STATE_STYLE[state]

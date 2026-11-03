@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import type { CharacterDefinition, Joint } from '@studio/schema'
 import { Component, type ReactNode, Suspense, useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { assetUrl } from '@/lib/api'
 
 export type Pose = Record<string, number>
@@ -79,7 +80,8 @@ function GlbModel({
 }) {
   const gltf = useGLTF(assetUrl(assetId))
   const scene = useMemo(() => {
-    const clone = gltf.scene.clone(true)
+    // SkeletonUtils.clone re-binds skinned meshes to the cloned bones (Object3D.clone does not).
+    const clone = cloneSkinned(gltf.scene)
     clone.traverse((o) => {
       if (o instanceof THREE.Mesh) {
         o.castShadow = true

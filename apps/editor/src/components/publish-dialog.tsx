@@ -19,8 +19,8 @@ import {
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
 import { ApiError, api } from '@/lib/api'
-import { qk } from '@/lib/queries'
 import { useDocPermission } from '@/lib/project'
+import { qk } from '@/lib/queries'
 import { useCan } from '@/lib/session'
 
 /**
@@ -35,7 +35,7 @@ export function PublishDialog({
   requiresReview,
   projectId,
 }: {
-  projectId: string
+  projectId: string | null
   docId: string
   draftVersion: number
   issues: Issue[]
@@ -63,6 +63,8 @@ export function PublishDialog({
       void qc.invalidateQueries({ queryKey: qk.revisions(docId) })
       void qc.invalidateQueries({ queryKey: qk.doc(docId) })
       void qc.invalidateQueries({ queryKey: ['docs'] })
+      void qc.invalidateQueries({ queryKey: ['projects'] })
+      void qc.invalidateQueries({ queryKey: ['project'] })
       setOpen(false)
     },
     onError: (err) => {
@@ -77,6 +79,7 @@ export function PublishDialog({
     onSubmit: ({ value }) => publish.mutateAsync(value.note).catch(() => {}),
   })
 
+  if (!canPublish) return null
   return (
     <Dialog
       open={open}
@@ -86,7 +89,7 @@ export function PublishDialog({
       }}
     >
       <DialogTrigger asChild>
-        <Button size="sm" disabled={!canPublish} data-testid="publish">
+        <Button size="sm" data-testid="publish">
           <Upload /> Publish
         </Button>
       </DialogTrigger>

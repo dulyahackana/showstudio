@@ -1,13 +1,18 @@
-import { Html, Line, TransformControls } from '@react-three/drei'
+import { Html, Line, TransformControls, useGLTF } from '@react-three/drei'
 import { type ThreeEvent, useFrame } from '@react-three/fiber'
 import type { ShowFrame } from '@studio/playback'
 import { type CharacterDefinition, type EnvironmentDefinition, refKey, type Vec3 } from '@studio/schema'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Component, type ReactNode, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
+import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js'
 import { KIND } from '@/components/kind'
+import { assetUrl } from '@/lib/api'
 import { BoxEdges, CharacterModel } from './character-model'
 
-export type StageSelection = { kind: 'placement' | 'light' | 'audio' | 'sensor' | 'keepOut'; id: string } | null
+export type StageSelection = {
+  kind: 'placement' | 'light' | 'audio' | 'sensor' | 'keepOut' | 'scenery'
+  id: string
+} | null
 
 /** A layout edit made with the gizmo (positions in meters, yaw in degrees). */
 export type StageChange =
@@ -16,6 +21,7 @@ export type StageChange =
   | { kind: 'audio'; id: string; position: Vec3 }
   | { kind: 'sensor'; id: string; position?: Vec3; range?: number }
   | { kind: 'keepOut'; id: string; box: { min: Vec3; max: Vec3 } }
+  | { kind: 'scenery'; id: string; position?: Vec3; rotationY?: number; scale?: number }
 
 export type GizmoMode = 'translate' | 'rotate' | 'scale'
 
@@ -48,7 +54,7 @@ function Label({ children, color, highlight }: { children: string; color?: strin
   return (
     <Html center distanceFactor={10} style={{ pointerEvents: 'none' }} zIndexRange={[20, 0]}>
       <span
-        className={`rounded-full border px-2 py-0.5 font-mono text-[10px] whitespace-nowrap shadow-lg backdrop-blur ${highlight ? 'border-amber-300 bg-primary text-black' : 'border-white/10 bg-[#0b111d]/80 text-white/85'}`}
+        className={`rounded-full border px-2 py-0.5 font-mono text-[10px] whitespace-nowrap shadow-lg backdrop-blur ${highlight ? 'border-emerald-300 bg-primary text-black' : 'border-white/10 bg-[#0b111d]/80 text-white/85'}`}
         style={!highlight && color ? { borderColor: `${color}66`, color } : undefined}
       >
         {children}
@@ -97,6 +103,8 @@ function Fixture({
     g.rotateX(-Math.PI / 2)
     return g
   }, [length])
+  // Re-aim after the fixture or its target moves (lookAt reads the head's new world position).
+  // biome-ignore lint/correctness/useExhaustiveDependencies: position is a trigger, read via the scene graph
   useEffect(() => {
     if (light.current && targetObj.current) light.current.target = targetObj.current
     head.current?.lookAt(new THREE.Vector3(...target))
@@ -104,7 +112,7 @@ function Fixture({
   const color = useMemo(() => new THREE.Color(), [])
   useFrame(() => {
     const sample = frame.current?.lights[id]
-    const intensity = sample ? sample.intensity : frame.current ? 0 : 0.12
+    const intensity = sample ? sample.intensity : frame.current ? 0 : 0.06
     if (sample) color.setRGB(sample.r, sample.g, sample.b)
     else color.copy(WARM)
     if (light.current) {
@@ -118,7 +126,7 @@ function Fixture({
     if (beam.current) {
       beam.current.color.copy(color)
       // Idle (no show) beams only hint at the aim; live beams carry the show's colour.
-      beam.current.opacity = frame.current ? intensity * 0.11 : 0.025
+      beam.current.opacity = frame.current ? intensity * 0.11 : 0
     }
   })
   return (
@@ -126,7 +134,7 @@ function Fixture({
       <group ref={setHead} position={position} onClick={onSelect}>
         <mesh rotation={[Math.PI / 2, 0, 0]} castShadow>
           <cylinderGeometry args={[0.1, 0.13, 0.26, 20]} />
-          <meshStandardMaterial color={selected ? '#f5a524' : '#1f2937'} metalness={0.6} roughness={0.35} />
+          <meshStandardMaterial color={selected ? '#34d399' : '#1f2937'} metalness={0.6} roughness={0.35} />
         </mesh>
         <mesh position={[0, 0, 0.135]}>
           <circleGeometry args={[0.11, 24]} />
@@ -165,6 +173,45 @@ function Fixture({
   )
 }
 
+/** Static set dressing: rocks, treasure, pillars. Never moves during a show. */
+function SceneryModel({ assetId }: { assetId: string }) {
+  const gltf = useGLTF(assetUrl(assetId))
+  const scene = useMemo(() => {
+    // SkeletonUtils.clone re-binds skinned meshes to the cloned bones (Object3D.clone does not).
+    const clone = cloneSkinned(gltf.scene)
+    clone.traverse((o) => {
+      if (o instanceof THREE.Mesh) {
+        o.castShadow = true
+        o.receiveShadow = true
+      }
+    })
+    return clone
+  }, [gltf.scene])
+  return <primitive object={scene} />
+}
+
+/** Warm, flickering light for torch props. */
+function TorchLight() {
+  const light = useRef<THREE.PointLight>(null)
+  const seed = useMemo(() => Math.random() * 100, [])
+  useFrame(({ clock }) => {
+    if (!light.current) return
+    const k = clock.elapsedTime + seed
+    light.current.intensity = 6 * (0.82 + 0.12 * Math.sin(k * 9.1) + 0.06 * Math.sin(k * 23.7))
+  })
+  return <pointLight ref={light} position={[0, 1.05, 0]} color="#ff9a45" distance={6} decay={2} />
+}
+
+class Quiet extends Component<{ children: ReactNode }, { failed: boolean }> {
+  override state = { failed: false }
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+  override render() {
+    return this.state.failed ? null : this.props.children
+  }
+}
+
 let stripes: THREE.CanvasTexture | null = null
 /** Diagonal caution stripes, shared by every keep-out floor. */
 function stripeTexture(): THREE.CanvasTexture {
@@ -173,7 +220,7 @@ function stripeTexture(): THREE.CanvasTexture {
   c.width = c.height = 64
   const g = c.getContext('2d')
   if (g) {
-    g.strokeStyle = 'rgba(245,165,36,0.9)'
+    g.strokeStyle = 'rgba(226,232,240,0.85)'
     g.lineWidth = 6
     for (let i = -64; i < 128; i += 32) {
       g.beginPath()
@@ -255,16 +302,19 @@ function KeepOutBarrier({
               <cylinderGeometry args={[0.12, 0.13, 0.025, 20]} />
               <meshStandardMaterial color="#8a6d1a" metalness={0.85} roughness={0.35} />
             </mesh>
-            <mesh position={[(x + nx) / 2, ropeY - 0.06, (z + nz) / 2]} rotation={[0, -Math.atan2(nz - z, nx - x), Math.PI / 2]}>
+            <mesh
+              position={[(x + nx) / 2, ropeY - 0.06, (z + nz) / 2]}
+              rotation={[0, -Math.atan2(nz - z, nx - x), Math.PI / 2]}
+            >
               <cylinderGeometry args={[0.018, 0.018, len, 8]} />
-              <meshStandardMaterial color={selected ? '#f5a524' : '#2a3550'} roughness={0.8} />
+              <meshStandardMaterial color={selected ? '#34d399' : '#2a3550'} roughness={0.8} />
             </mesh>
           </group>
         )
       })}
       {selected && (
         <>
-          <BoxEdges size={s} position={[0, 0, 0]} color="#f5a524" />
+          <BoxEdges size={s} position={[0, 0, 0]} color="#34d399" />
           <group position={[0, max[1] - c[1] + 0.2, 0]}>
             <Label highlight>{name}</Label>
           </group>
@@ -298,7 +348,7 @@ function SensorZone({
     const m = ring.current.material as THREE.MeshBasicMaterial
     m.opacity = active ? 0.9 - ((clock.elapsedTime * 1.2) % 1) * 0.8 : selected ? 0.9 : 0.55
   })
-  const color = active ? '#f5a524' : KIND.sensor.hex
+  const color = active ? '#34d399' : KIND.sensor.hex
   return (
     <group ref={register} position={[position[0], 0.012, position[2]]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -381,7 +431,11 @@ export function StageScene({
     <group onPointerMissed={() => performance.now() - lastGizmoUse > 400 && onSelect?.(null)}>
       <ambientLight color={env.ambient.color} intensity={env.ambient.intensity * 0.6} />
       {/* stage floor and boundary */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[stageCenter[0], env.stage.min[1] + 0.003, stageCenter[2]]} receiveShadow>
+      <mesh
+        rotation={[-Math.PI / 2, 0, 0]}
+        position={[stageCenter[0], env.stage.min[1] + 0.003, stageCenter[2]]}
+        receiveShadow
+      >
         <planeGeometry args={[stageSize[0], stageSize[2]]} />
         <meshStandardMaterial color="#121b2e" roughness={0.92} metalness={0.05} transparent opacity={0.92} />
       </mesh>
@@ -397,6 +451,29 @@ export function StageScene({
           onSelect={pick({ kind: 'keepOut', id: z.name })}
           register={register(`keepOut:${z.name}`)}
         />
+      ))}
+
+      {(env.scenery ?? []).map((item) => (
+        <group
+          key={item.id}
+          ref={register(`scenery:${item.id}`)}
+          position={item.position}
+          rotation={[0, THREE.MathUtils.degToRad(item.rotationY), 0]}
+          scale={item.scale}
+          onClick={pick({ kind: 'scenery', id: item.id })}
+        >
+          <Quiet>
+            <Suspense fallback={null}>
+              <SceneryModel assetId={item.model.assetId} />
+            </Suspense>
+          </Quiet>
+          {/torch/i.test(item.name) && <TorchLight />}
+          {is('scenery', item.id) && (
+            <group position={[0, 1.2 / item.scale, 0]}>
+              <Label highlight>{item.name}</Label>
+            </group>
+          )}
+        </group>
       ))}
 
       {env.placements.map((p) => {
@@ -421,7 +498,7 @@ export function StageScene({
                   <BoxEdges
                     size={character.footprint.size}
                     position={[0, character.footprint.size[1] / 2, 0]}
-                    color={sel ? '#f5a524' : '#3a5a7a'}
+                    color={sel ? '#34d399' : '#3a5a7a'}
                   />
                 )}
               </>
@@ -462,7 +539,7 @@ export function StageScene({
         >
           <mesh castShadow>
             <boxGeometry args={[0.32, 0.42, 0.26]} />
-            <meshStandardMaterial color={is('audio', a.deviceId) ? '#f5a524' : '#1e1b2e'} roughness={0.6} />
+            <meshStandardMaterial color={is('audio', a.deviceId) ? '#34d399' : '#1e1b2e'} roughness={0.6} />
           </mesh>
           <mesh position={[0, 0.05, 0.131]}>
             <circleGeometry args={[0.1, 24]} />
@@ -489,7 +566,9 @@ export function StageScene({
         </group>
       ))}
 
-      {editing && selected && <Gizmo env={env} selected={selected} editing={editing} objects={objects.current} register={register} />}
+      {editing && selected && (
+        <Gizmo env={env} selected={selected} editing={editing} objects={objects.current} register={register} />
+      )}
     </group>
   )
 }
@@ -515,11 +594,11 @@ function Gizmo({
   // What each kind may do: figures turn about Y, zones and sensors resize, lights aim.
   const mode: GizmoMode | null =
     editing.mode === 'rotate'
-      ? kind === 'placement'
+      ? kind === 'placement' || kind === 'scenery'
         ? 'rotate'
         : null
       : editing.mode === 'scale'
-        ? kind === 'keepOut' || kind === 'sensor'
+        ? kind === 'keepOut' || kind === 'sensor' || kind === 'scenery'
           ? 'scale'
           : null
         : 'translate'
@@ -537,6 +616,17 @@ function Gizmo({
             id: selected.id,
             position: p,
             rotationY: Math.round(THREE.MathUtils.radToDeg(object.rotation.y) * 10) / 10,
+          },
+          final,
+        )
+      case 'scenery':
+        return editing.onChange(
+          {
+            kind,
+            id: selected.id,
+            position: p,
+            rotationY: Math.round(THREE.MathUtils.radToDeg(object.rotation.y) * 10) / 10,
+            ...(final ? { scale: r2(Math.max(0.05, object.scale.x)) } : {}),
           },
           final,
         )
@@ -562,17 +652,27 @@ function Gizmo({
       case 'keepOut': {
         const zone = env.keepOut.find((z) => z.name === selected.id)
         if (!zone) return
-        const half = size(zone.box.min, zone.box.max).map((n, i) => (n / 2) * (final ? object.scale.getComponent(i) : 1))
+        const half = size(zone.box.min, zone.box.max).map(
+          (n, i) => (n / 2) * (final ? object.scale.getComponent(i) : 1),
+        )
         if (final) object.scale.set(1, 1, 1)
         const c = [object.position.x, object.position.y, object.position.z]
         return editing.onChange(
           {
-          kind,
-          id: selected.id,
-          box: {
-            min: [r2((c[0] ?? 0) - (half[0] ?? 0)), r2((c[1] ?? 0) - (half[1] ?? 0)), r2((c[2] ?? 0) - (half[2] ?? 0))],
-            max: [r2((c[0] ?? 0) + (half[0] ?? 0)), r2((c[1] ?? 0) + (half[1] ?? 0)), r2((c[2] ?? 0) + (half[2] ?? 0))],
-          },
+            kind,
+            id: selected.id,
+            box: {
+              min: [
+                r2((c[0] ?? 0) - (half[0] ?? 0)),
+                r2((c[1] ?? 0) - (half[1] ?? 0)),
+                r2((c[2] ?? 0) - (half[2] ?? 0)),
+              ],
+              max: [
+                r2((c[0] ?? 0) + (half[0] ?? 0)),
+                r2((c[1] ?? 0) + (half[1] ?? 0)),
+                r2((c[2] ?? 0) + (half[2] ?? 0)),
+              ],
+            },
           },
           final,
         )
@@ -586,9 +686,22 @@ function Gizmo({
         <>
           <mesh ref={register(`target:${light.deviceId}`)} position={light.target}>
             <sphereGeometry args={[0.09, 16, 16]} />
-            <meshBasicMaterial color={editing.aim ? '#f5a524' : '#f4c74f'} transparent opacity={editing.aim ? 1 : 0.6} />
+            <meshBasicMaterial
+              color={editing.aim ? '#34d399' : '#f4c74f'}
+              transparent
+              opacity={editing.aim ? 1 : 0.6}
+            />
           </mesh>
-          <Line points={[light.position, light.target]} color="#f4c74f" dashed dashSize={0.15} gapSize={0.1} lineWidth={1} transparent opacity={0.7} />
+          <Line
+            points={[light.position, light.target]}
+            color="#f4c74f"
+            dashed
+            dashSize={0.15}
+            gapSize={0.1}
+            lineWidth={1}
+            transparent
+            opacity={0.7}
+          />
         </>
       )}
       {object && mode && (

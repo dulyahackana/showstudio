@@ -31,7 +31,8 @@ type Draft = CharacterDefinition | EnvironmentDefinition | ShowDefinition
 
 interface DocRow {
   id: string
-  project_id: string
+  project_id: string | null
+  location_id: string | null
   kind: DocKind
   name: string
   draft: Draft
@@ -41,6 +42,7 @@ interface DocRow {
   updated_at: Date
   updated_by: string
   latest_revision: number | null
+  latest_status: RevisionSummary['status'] | null
   latest_approved_revision: number | null
 }
 
@@ -65,6 +67,7 @@ interface RevisionRow {
 const DOC_SELECT = `
   select d.*,
     (select max(r.revision) from revisions r where r.doc_id = d.id) as latest_revision,
+    (select r.status from revisions r where r.doc_id = d.id order by r.revision desc limit 1) as latest_status,
     (select max(r.revision) from revisions r where r.doc_id = d.id and r.status = 'approved') as latest_approved_revision
   from documents d`
 
@@ -74,6 +77,7 @@ const REVISION_SELECT = `
 const toSummary = (r: DocRow): DocumentSummary => ({
   id: r.id,
   projectId: r.project_id,
+  locationId: r.location_id,
   kind: r.kind,
   name: r.name,
   draftVersion: r.draft_version,
@@ -82,6 +86,7 @@ const toSummary = (r: DocRow): DocumentSummary => ({
   updatedAt: iso(r.updated_at),
   updatedBy: r.updated_by,
   latestRevision: r.latest_revision,
+  latestRevisionStatus: r.latest_status,
   latestApprovedRevision: r.latest_approved_revision,
 })
 
@@ -112,13 +117,17 @@ export class StudioService {
     private readonly signer: Signer,
   ) {}
 
-  /** visible: project ids the caller may read (null = all, for admins). */
-  async listDocuments(filter: { kind?: DocKind; projectId?: string; visible: string[] | null }): Promise<DocumentSummary[]> {
+  /** visible: project ids the caller may read (null = all, for admins). Library and location documents are shared. */
+  async listDocuments(filter: {
+    kind?: DocKind
+    locationId?: string
+    visible: string[] | null
+  }): Promise<DocumentSummary[]> {
     const where: string[] = []
     const args: unknown[] = []
     if (filter.kind) where.push(`d.kind = $${args.push(filter.kind)}`)
-    if (filter.projectId) where.push(`d.project_id = $${args.push(filter.projectId)}`)
-    if (filter.visible) where.push(`d.project_id = any($${args.push(filter.visible)})`)
+    if (filter.locationId) where.push(`d.location_id = $${args.push(filter.locationId)}`)
+    if (filter.visible) where.push(`(d.project_id is null or d.project_id = any($${args.push(filter.visible)}))`)
     const rows = await this.db.query<DocRow>(
       `${DOC_SELECT} ${where.length ? `where ${where.join(' and ')}` : ''} order by d.kind, d.name`,
       args,
@@ -132,17 +141,26 @@ export class StudioService {
     return { ...toSummary(row), kind: row.kind, draft: row.draft } as StudioDocument
   }
 
-  async createDocument(kind: DocKind, id: string, projectId: string, draft: Draft, user: User): Promise<StudioDocument> {
-    return this.db.transaction(async (tx) => {
+  async createDocument(
+    kind: DocKind,
+    id: string,
+    scope: { projectId?: string; locationId?: string },
+    draft: Draft,
+    user: User,
+    db?: Db,
+  ): Promise<StudioDocument> {
+    const run = async (tx: Db) => {
       const [existing] = await tx.query('select 1 from documents where id = $1', [id])
       if (existing) throw problems.conflict(`A document with id "${id}" already exists`)
       await tx.query(
-        'insert into documents (id, project_id, kind, name, draft, created_by, updated_by) values ($1, $2, $3, $4, $5, $6, $6)',
-        [id, projectId, kind, draft.name, draft, user.name],
+        `insert into documents (id, project_id, location_id, kind, name, draft, created_by, updated_by)
+         values ($1, $2, $3, $4, $5, $6, $7, $7)`,
+        [id, scope.projectId ?? null, scope.locationId ?? null, kind, draft.name, draft, user.name],
       )
-      await this.audit.append(user.name, 'document.create', kind, id, { name: draft.name, projectId }, tx)
+      await this.audit.append(user.name, 'document.create', kind, id, { name: draft.name, ...scope }, tx)
       return this.getDocument(id, tx)
-    })
+    }
+    return db ? run(db) : this.db.transaction(run)
   }
 
   async saveDraft(id: string, kind: DocKind, draftVersion: number, draft: Draft, user: User): Promise<DocumentSummary> {

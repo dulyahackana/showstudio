@@ -44,15 +44,18 @@ Base path `/api/v1`. JSON in, JSON out; errors are [RFC 9457](https://www.rfc-ed
 
 Authentication: `Authorization: Bearer <session>` (dev persona login now, OIDC later; same roles). Devices use `x-device-id`, `x-environment-id`, `x-device-token` (HMAC credential issued at provisioning). Provisioning uses `x-provisioning-token`.
 
-Roles (from the contract's `roles`; admin implies all):
+Access has two layers. **Workspace roles** (from the contract's `roles`; admin implies all) say what kind of work a person does. **Project roles** (`owner`, `editor`, `reviewer`, `operator`, `viewer`; matrix in `PROJECT_PERMISSIONS`) say on which shows. A project is one show (same id): `POST /projects {id, draft}` creates both, and shows cannot be created any other way. Non-members get `404` for the project and its show. Library characters and location environments, with their live fleet state, are shared with the whole workspace, so only the workspace role applies to them. Routes: `GET /workspace`, `GET|POST /locations` (admins create), `GET|POST /projects`, `GET /projects/{id}`, `PUT|DELETE /projects/{id}/members/{user}` (owners and admins; a project keeps one owner). Characters are created with `POST /docs {kind: 'character'}`, environments with `POST /docs {kind: 'environment', locationId}`.
+
+Workspace roles:
 
 | Action                                       | engineer | safety | operator |
 | -------------------------------------------- | :------: | :----: | :------: |
 | Create/edit/publish documents, upload assets |    ✓     |        |          |
 | Approve/reject show revisions (not your own) |          |   ✓    |          |
 | Deploy approved shows                        |    ✓     |        |    ✓     |
-| Launch / stop / reset e-stop                 |          |        |    ✓     |
-| E-stop                                       |    ✓     |   ✓    |    ✓     |
+| Launch (also needs project `operator`)       |          |        |    ✓     |
+| Stop / reset e-stop on an environment        |          |        |    ✓     |
+| E-stop (no project role needed)              |    ✓     |   ✓    |    ✓     |
 
 The full route table with schemas is in `openapi.json`; the human-readable version is the `contract` object itself.
 

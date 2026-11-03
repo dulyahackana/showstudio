@@ -95,25 +95,28 @@ function AssetsPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Library"
         title="Assets"
         description="Content-addressed 3D models and audio. Files are identified by their bytes, so re-uploads are deduplicated and devices verify what they download."
         actions={
-          <Button size="sm" disabled={!canUpload || upload.isPending} asChild>
-            <label>
-              <Upload /> Upload GLB / audio
-              <input
-                type="file"
-                multiple
-                accept=".glb,.wav,.ogg,.mp3"
-                className="hidden"
-                onChange={(e) => {
-                  const files = [...(e.target.files ?? [])]
-                  if (files.length) upload.mutate(files)
-                  e.target.value = ''
-                }}
-              />
-            </label>
-          </Button>
+          canUpload && (
+            <Button size="sm" disabled={upload.isPending} asChild>
+              <label>
+                <Upload /> Upload GLB / audio
+                <input
+                  type="file"
+                  multiple
+                  accept=".glb,.wav,.ogg,.mp3"
+                  className="hidden"
+                  onChange={(e) => {
+                    const files = [...(e.target.files ?? [])]
+                    if (files.length) upload.mutate(files)
+                    e.target.value = ''
+                  }}
+                />
+              </label>
+            </Button>
+          )
         }
       />
       <PageBody>

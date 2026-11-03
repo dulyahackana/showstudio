@@ -12,16 +12,24 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AssetsRouteImport } from './routes/assets'
 import { Route as AuditRouteImport } from './routes/audit'
-import { Route as FleetRouteImport } from './routes/fleet'
-import { Route as OperatorRouteImport } from './routes/operator'
+import { Route as PeopleRouteImport } from './routes/people'
 import { Route as CharactersIndexRouteImport } from './routes/characters/index'
 import { Route as CharactersIdRouteImport } from './routes/characters/$id'
 import { Route as EnvironmentsIndexRouteImport } from './routes/environments/index'
 import { Route as EnvironmentsIdRouteImport } from './routes/environments/$id'
+import { Route as LocationsIndexRouteImport } from './routes/locations/index'
+import { Route as LocationsLocationIdRouteImport } from './routes/locations/$locationId'
 import { Route as ProjectsIndexRouteImport } from './routes/projects/index'
 import { Route as ProjectsProjectIdRouteImport } from './routes/projects/$projectId'
-import { Route as ShowsIndexRouteImport } from './routes/shows/index'
-import { Route as ShowsIdRouteImport } from './routes/shows/$id'
+import { Route as EnvironmentsIdIndexRouteImport } from './routes/environments/$id/index'
+import { Route as EnvironmentsIdDevicesRouteImport } from './routes/environments/$id/devices'
+import { Route as EnvironmentsIdOperateRouteImport } from './routes/environments/$id/operate'
+import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$projectId/index'
+import { Route as ProjectsProjectIdDeployRouteImport } from './routes/projects/$projectId/deploy'
+import { Route as ProjectsProjectIdLaunchRouteImport } from './routes/projects/$projectId/launch'
+import { Route as ProjectsProjectIdReviewRouteImport } from './routes/projects/$projectId/review'
+import { Route as ProjectsProjectIdShowRouteImport } from './routes/projects/$projectId/show'
+import { Route as ProjectsProjectIdTeamRouteImport } from './routes/projects/$projectId/team'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -38,14 +46,9 @@ const AuditRoute = AuditRouteImport.update({
   path: '/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FleetRoute = FleetRouteImport.update({
-  id: '/fleet',
-  path: '/fleet',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OperatorRoute = OperatorRouteImport.update({
-  id: '/operator',
-  path: '/operator',
+const PeopleRoute = PeopleRouteImport.update({
+  id: '/people',
+  path: '/people',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CharactersIndexRoute = CharactersIndexRouteImport.update({
@@ -68,6 +71,16 @@ const EnvironmentsIdRoute = EnvironmentsIdRouteImport.update({
   path: '/environments/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LocationsIndexRoute = LocationsIndexRouteImport.update({
+  id: '/locations/',
+  path: '/locations/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocationsLocationIdRoute = LocationsLocationIdRouteImport.update({
+  id: '/locations/$locationId',
+  path: '/locations/$locationId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProjectsIndexRoute = ProjectsIndexRouteImport.update({
   id: '/projects/',
   path: '/projects/',
@@ -78,62 +91,119 @@ const ProjectsProjectIdRoute = ProjectsProjectIdRouteImport.update({
   path: '/projects/$projectId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShowsIndexRoute = ShowsIndexRouteImport.update({
-  id: '/shows/',
-  path: '/shows/',
-  getParentRoute: () => rootRouteImport,
+const EnvironmentsIdIndexRoute = EnvironmentsIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => EnvironmentsIdRoute,
 } as any)
-const ShowsIdRoute = ShowsIdRouteImport.update({
-  id: '/shows/$id',
-  path: '/shows/$id',
-  getParentRoute: () => rootRouteImport,
+const EnvironmentsIdDevicesRoute = EnvironmentsIdDevicesRouteImport.update({
+  id: '/devices',
+  path: '/devices',
+  getParentRoute: () => EnvironmentsIdRoute,
+} as any)
+const EnvironmentsIdOperateRoute = EnvironmentsIdOperateRouteImport.update({
+  id: '/operate',
+  path: '/operate',
+  getParentRoute: () => EnvironmentsIdRoute,
+} as any)
+const ProjectsProjectIdIndexRoute = ProjectsProjectIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ProjectsProjectIdRoute,
+} as any)
+const ProjectsProjectIdDeployRoute = ProjectsProjectIdDeployRouteImport.update({
+  id: '/deploy',
+  path: '/deploy',
+  getParentRoute: () => ProjectsProjectIdRoute,
+} as any)
+const ProjectsProjectIdLaunchRoute = ProjectsProjectIdLaunchRouteImport.update({
+  id: '/launch',
+  path: '/launch',
+  getParentRoute: () => ProjectsProjectIdRoute,
+} as any)
+const ProjectsProjectIdReviewRoute = ProjectsProjectIdReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => ProjectsProjectIdRoute,
+} as any)
+const ProjectsProjectIdShowRoute = ProjectsProjectIdShowRouteImport.update({
+  id: '/show',
+  path: '/show',
+  getParentRoute: () => ProjectsProjectIdRoute,
+} as any)
+const ProjectsProjectIdTeamRoute = ProjectsProjectIdTeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => ProjectsProjectIdRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/assets': typeof AssetsRoute
   '/audit': typeof AuditRoute
-  '/fleet': typeof FleetRoute
-  '/operator': typeof OperatorRoute
+  '/people': typeof PeopleRoute
   '/characters/$id': typeof CharactersIdRoute
-  '/environments/$id': typeof EnvironmentsIdRoute
-  '/projects/$projectId': typeof ProjectsProjectIdRoute
-  '/shows/$id': typeof ShowsIdRoute
+  '/environments/$id': typeof EnvironmentsIdRouteWithChildren
+  '/locations/$locationId': typeof LocationsLocationIdRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/characters/': typeof CharactersIndexRoute
   '/environments/': typeof EnvironmentsIndexRoute
+  '/locations/': typeof LocationsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
-  '/shows/': typeof ShowsIndexRoute
+  '/environments/$id/devices': typeof EnvironmentsIdDevicesRoute
+  '/environments/$id/operate': typeof EnvironmentsIdOperateRoute
+  '/projects/$projectId/deploy': typeof ProjectsProjectIdDeployRoute
+  '/projects/$projectId/launch': typeof ProjectsProjectIdLaunchRoute
+  '/projects/$projectId/review': typeof ProjectsProjectIdReviewRoute
+  '/projects/$projectId/show': typeof ProjectsProjectIdShowRoute
+  '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
+  '/environments/$id/': typeof EnvironmentsIdIndexRoute
+  '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/assets': typeof AssetsRoute
   '/audit': typeof AuditRoute
-  '/fleet': typeof FleetRoute
-  '/operator': typeof OperatorRoute
+  '/people': typeof PeopleRoute
   '/characters/$id': typeof CharactersIdRoute
-  '/environments/$id': typeof EnvironmentsIdRoute
-  '/projects/$projectId': typeof ProjectsProjectIdRoute
-  '/shows/$id': typeof ShowsIdRoute
+  '/locations/$locationId': typeof LocationsLocationIdRoute
   '/characters': typeof CharactersIndexRoute
   '/environments': typeof EnvironmentsIndexRoute
+  '/locations': typeof LocationsIndexRoute
   '/projects': typeof ProjectsIndexRoute
-  '/shows': typeof ShowsIndexRoute
+  '/environments/$id/devices': typeof EnvironmentsIdDevicesRoute
+  '/environments/$id/operate': typeof EnvironmentsIdOperateRoute
+  '/projects/$projectId/deploy': typeof ProjectsProjectIdDeployRoute
+  '/projects/$projectId/launch': typeof ProjectsProjectIdLaunchRoute
+  '/projects/$projectId/review': typeof ProjectsProjectIdReviewRoute
+  '/projects/$projectId/show': typeof ProjectsProjectIdShowRoute
+  '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
+  '/environments/$id': typeof EnvironmentsIdIndexRoute
+  '/projects/$projectId': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/assets': typeof AssetsRoute
   '/audit': typeof AuditRoute
-  '/fleet': typeof FleetRoute
-  '/operator': typeof OperatorRoute
+  '/people': typeof PeopleRoute
   '/characters/$id': typeof CharactersIdRoute
-  '/environments/$id': typeof EnvironmentsIdRoute
-  '/projects/$projectId': typeof ProjectsProjectIdRoute
-  '/shows/$id': typeof ShowsIdRoute
+  '/environments/$id': typeof EnvironmentsIdRouteWithChildren
+  '/locations/$locationId': typeof LocationsLocationIdRoute
+  '/projects/$projectId': typeof ProjectsProjectIdRouteWithChildren
   '/characters/': typeof CharactersIndexRoute
   '/environments/': typeof EnvironmentsIndexRoute
+  '/locations/': typeof LocationsIndexRoute
   '/projects/': typeof ProjectsIndexRoute
-  '/shows/': typeof ShowsIndexRoute
+  '/environments/$id/devices': typeof EnvironmentsIdDevicesRoute
+  '/environments/$id/operate': typeof EnvironmentsIdOperateRoute
+  '/projects/$projectId/deploy': typeof ProjectsProjectIdDeployRoute
+  '/projects/$projectId/launch': typeof ProjectsProjectIdLaunchRoute
+  '/projects/$projectId/review': typeof ProjectsProjectIdReviewRoute
+  '/projects/$projectId/show': typeof ProjectsProjectIdShowRoute
+  '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
+  '/environments/$id/': typeof EnvironmentsIdIndexRoute
+  '/projects/$projectId/': typeof ProjectsProjectIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,62 +211,83 @@ export interface FileRouteTypes {
     | '/'
     | '/assets'
     | '/audit'
-    | '/fleet'
-    | '/operator'
+    | '/people'
     | '/characters/$id'
     | '/environments/$id'
+    | '/locations/$locationId'
     | '/projects/$projectId'
-    | '/shows/$id'
     | '/characters/'
     | '/environments/'
+    | '/locations/'
     | '/projects/'
-    | '/shows/'
+    | '/environments/$id/devices'
+    | '/environments/$id/operate'
+    | '/projects/$projectId/deploy'
+    | '/projects/$projectId/launch'
+    | '/projects/$projectId/review'
+    | '/projects/$projectId/show'
+    | '/projects/$projectId/team'
+    | '/environments/$id/'
+    | '/projects/$projectId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/assets'
     | '/audit'
-    | '/fleet'
-    | '/operator'
+    | '/people'
     | '/characters/$id'
-    | '/environments/$id'
-    | '/projects/$projectId'
-    | '/shows/$id'
+    | '/locations/$locationId'
     | '/characters'
     | '/environments'
+    | '/locations'
     | '/projects'
-    | '/shows'
+    | '/environments/$id/devices'
+    | '/environments/$id/operate'
+    | '/projects/$projectId/deploy'
+    | '/projects/$projectId/launch'
+    | '/projects/$projectId/review'
+    | '/projects/$projectId/show'
+    | '/projects/$projectId/team'
+    | '/environments/$id'
+    | '/projects/$projectId'
   id:
     | '__root__'
     | '/'
     | '/assets'
     | '/audit'
-    | '/fleet'
-    | '/operator'
+    | '/people'
     | '/characters/$id'
     | '/environments/$id'
+    | '/locations/$locationId'
     | '/projects/$projectId'
-    | '/shows/$id'
     | '/characters/'
     | '/environments/'
+    | '/locations/'
     | '/projects/'
-    | '/shows/'
+    | '/environments/$id/devices'
+    | '/environments/$id/operate'
+    | '/projects/$projectId/deploy'
+    | '/projects/$projectId/launch'
+    | '/projects/$projectId/review'
+    | '/projects/$projectId/show'
+    | '/projects/$projectId/team'
+    | '/environments/$id/'
+    | '/projects/$projectId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AssetsRoute: typeof AssetsRoute
   AuditRoute: typeof AuditRoute
-  FleetRoute: typeof FleetRoute
-  OperatorRoute: typeof OperatorRoute
+  PeopleRoute: typeof PeopleRoute
   CharactersIdRoute: typeof CharactersIdRoute
-  EnvironmentsIdRoute: typeof EnvironmentsIdRoute
-  ProjectsProjectIdRoute: typeof ProjectsProjectIdRoute
-  ShowsIdRoute: typeof ShowsIdRoute
+  EnvironmentsIdRoute: typeof EnvironmentsIdRouteWithChildren
+  LocationsLocationIdRoute: typeof LocationsLocationIdRoute
+  ProjectsProjectIdRoute: typeof ProjectsProjectIdRouteWithChildren
   CharactersIndexRoute: typeof CharactersIndexRoute
   EnvironmentsIndexRoute: typeof EnvironmentsIndexRoute
+  LocationsIndexRoute: typeof LocationsIndexRoute
   ProjectsIndexRoute: typeof ProjectsIndexRoute
-  ShowsIndexRoute: typeof ShowsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -222,18 +313,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuditRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/fleet': {
-      id: '/fleet'
-      path: '/fleet'
-      fullPath: '/fleet'
-      preLoaderRoute: typeof FleetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/operator': {
-      id: '/operator'
-      path: '/operator'
-      fullPath: '/operator'
-      preLoaderRoute: typeof OperatorRouteImport
+    '/people': {
+      id: '/people'
+      path: '/people'
+      fullPath: '/people'
+      preLoaderRoute: typeof PeopleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/characters/': {
@@ -264,6 +348,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EnvironmentsIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/locations/': {
+      id: '/locations/'
+      path: '/locations'
+      fullPath: '/locations/'
+      preLoaderRoute: typeof LocationsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/locations/$locationId': {
+      id: '/locations/$locationId'
+      path: '/locations/$locationId'
+      fullPath: '/locations/$locationId'
+      preLoaderRoute: typeof LocationsLocationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/projects/': {
       id: '/projects/'
       path: '/projects'
@@ -278,37 +376,122 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/shows/': {
-      id: '/shows/'
-      path: '/shows'
-      fullPath: '/shows/'
-      preLoaderRoute: typeof ShowsIndexRouteImport
-      parentRoute: typeof rootRouteImport
+    '/environments/$id/': {
+      id: '/environments/$id/'
+      path: '/'
+      fullPath: '/environments/$id/'
+      preLoaderRoute: typeof EnvironmentsIdIndexRouteImport
+      parentRoute: typeof EnvironmentsIdRoute
     }
-    '/shows/$id': {
-      id: '/shows/$id'
-      path: '/shows/$id'
-      fullPath: '/shows/$id'
-      preLoaderRoute: typeof ShowsIdRouteImport
-      parentRoute: typeof rootRouteImport
+    '/environments/$id/devices': {
+      id: '/environments/$id/devices'
+      path: '/devices'
+      fullPath: '/environments/$id/devices'
+      preLoaderRoute: typeof EnvironmentsIdDevicesRouteImport
+      parentRoute: typeof EnvironmentsIdRoute
+    }
+    '/environments/$id/operate': {
+      id: '/environments/$id/operate'
+      path: '/operate'
+      fullPath: '/environments/$id/operate'
+      preLoaderRoute: typeof EnvironmentsIdOperateRouteImport
+      parentRoute: typeof EnvironmentsIdRoute
+    }
+    '/projects/$projectId/': {
+      id: '/projects/$projectId/'
+      path: '/'
+      fullPath: '/projects/$projectId/'
+      preLoaderRoute: typeof ProjectsProjectIdIndexRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/deploy': {
+      id: '/projects/$projectId/deploy'
+      path: '/deploy'
+      fullPath: '/projects/$projectId/deploy'
+      preLoaderRoute: typeof ProjectsProjectIdDeployRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/launch': {
+      id: '/projects/$projectId/launch'
+      path: '/launch'
+      fullPath: '/projects/$projectId/launch'
+      preLoaderRoute: typeof ProjectsProjectIdLaunchRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/review': {
+      id: '/projects/$projectId/review'
+      path: '/review'
+      fullPath: '/projects/$projectId/review'
+      preLoaderRoute: typeof ProjectsProjectIdReviewRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/show': {
+      id: '/projects/$projectId/show'
+      path: '/show'
+      fullPath: '/projects/$projectId/show'
+      preLoaderRoute: typeof ProjectsProjectIdShowRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
+    '/projects/$projectId/team': {
+      id: '/projects/$projectId/team'
+      path: '/team'
+      fullPath: '/projects/$projectId/team'
+      preLoaderRoute: typeof ProjectsProjectIdTeamRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
     }
   }
 }
+
+interface EnvironmentsIdRouteChildren {
+  EnvironmentsIdDevicesRoute: typeof EnvironmentsIdDevicesRoute
+  EnvironmentsIdOperateRoute: typeof EnvironmentsIdOperateRoute
+  EnvironmentsIdIndexRoute: typeof EnvironmentsIdIndexRoute
+}
+
+const EnvironmentsIdRouteChildren: EnvironmentsIdRouteChildren = {
+  EnvironmentsIdDevicesRoute: EnvironmentsIdDevicesRoute,
+  EnvironmentsIdOperateRoute: EnvironmentsIdOperateRoute,
+  EnvironmentsIdIndexRoute: EnvironmentsIdIndexRoute,
+}
+
+const EnvironmentsIdRouteWithChildren = EnvironmentsIdRoute._addFileChildren(
+  EnvironmentsIdRouteChildren,
+)
+
+interface ProjectsProjectIdRouteChildren {
+  ProjectsProjectIdDeployRoute: typeof ProjectsProjectIdDeployRoute
+  ProjectsProjectIdLaunchRoute: typeof ProjectsProjectIdLaunchRoute
+  ProjectsProjectIdReviewRoute: typeof ProjectsProjectIdReviewRoute
+  ProjectsProjectIdShowRoute: typeof ProjectsProjectIdShowRoute
+  ProjectsProjectIdTeamRoute: typeof ProjectsProjectIdTeamRoute
+  ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
+}
+
+const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
+  ProjectsProjectIdDeployRoute: ProjectsProjectIdDeployRoute,
+  ProjectsProjectIdLaunchRoute: ProjectsProjectIdLaunchRoute,
+  ProjectsProjectIdReviewRoute: ProjectsProjectIdReviewRoute,
+  ProjectsProjectIdShowRoute: ProjectsProjectIdShowRoute,
+  ProjectsProjectIdTeamRoute: ProjectsProjectIdTeamRoute,
+  ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,
+}
+
+const ProjectsProjectIdRouteWithChildren =
+  ProjectsProjectIdRoute._addFileChildren(ProjectsProjectIdRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AssetsRoute: AssetsRoute,
   AuditRoute: AuditRoute,
-  FleetRoute: FleetRoute,
-  OperatorRoute: OperatorRoute,
+  PeopleRoute: PeopleRoute,
   CharactersIdRoute: CharactersIdRoute,
-  EnvironmentsIdRoute: EnvironmentsIdRoute,
-  ProjectsProjectIdRoute: ProjectsProjectIdRoute,
-  ShowsIdRoute: ShowsIdRoute,
+  EnvironmentsIdRoute: EnvironmentsIdRouteWithChildren,
+  LocationsLocationIdRoute: LocationsLocationIdRoute,
+  ProjectsProjectIdRoute: ProjectsProjectIdRouteWithChildren,
   CharactersIndexRoute: CharactersIndexRoute,
   EnvironmentsIndexRoute: EnvironmentsIndexRoute,
+  LocationsIndexRoute: LocationsIndexRoute,
   ProjectsIndexRoute: ProjectsIndexRoute,
-  ShowsIndexRoute: ShowsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

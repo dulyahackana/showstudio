@@ -1,8 +1,8 @@
 import type { Joint, Vec3 } from '@studio/schema'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { toast } from 'sonner'
 import { Bot } from 'lucide-react'
+import { toast } from 'sonner'
 import { CharacterCard, DocGrid } from '@/components/doc-cards'
 import { NewDocumentDialog } from '@/components/new-document-dialog'
 import { PageBody, PageHeader } from '@/components/page'
@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input'
 import { inspectGlb, parseDefinitionFile } from '@/features/characters/import'
 import { api } from '@/lib/api'
 import { docsQuery } from '@/lib/queries'
-import { useCurrentProject, useProjectCan } from '@/lib/project'
 import { useCan } from '@/lib/session'
 
 export const Route = createFileRoute('/characters/')({
@@ -24,9 +23,7 @@ interface Files {
 }
 
 function CharactersPage() {
-  const project = useCurrentProject()
-  const canEdit = useProjectCan('edit')
-  const { data = [] } = useQuery({ ...docsQuery('character', project?.id), enabled: !!project })
+  const { data = [] } = useQuery(docsQuery('character'))
   const navigate = useNavigate()
   const qc = useQueryClient()
   const canCreate = useCan('createDocument')
@@ -47,7 +44,6 @@ function CharactersPage() {
       body: {
         kind: 'character',
         id,
-        projectId: project?.id ?? '',
         draft: { schemaVersion: 1, name, description: '', model, footprint: { size }, joints },
       },
     })
@@ -59,49 +55,54 @@ function CharactersPage() {
   return (
     <>
       <PageHeader
-        eyebrow={`${project?.name ?? 'Project'} · ${data.length} figures`}
+        eyebrow={`Library · ${data.length} figures`}
         title="Characters"
-        description="Each mechatronic figure: its 3D model, joints, ranges of motion and maximum speeds."
+        description="Each mechatronic figure: its 3D model, joints, ranges of motion and maximum speeds. Shared by every environment and project."
         actions={
-          <NewDocumentDialog<Files>
-            title="New character"
-            description="Upload the figure's GLB model and, optionally, a URDF or JSON joint definition."
-            label="New character"
-            disabled={!canCreate || !canEdit || !project}
-            initialExtra={{ model: null, definition: null }}
-            onCreate={create}
-            extra={(v, set) => (
-              <>
-                <Field>
-                  <FieldLabel htmlFor="model-file">3D model (.glb)</FieldLabel>
-                  <Input
-                    id="model-file"
-                    type="file"
-                    accept=".glb,model/gltf-binary"
-                    onChange={(e) => set({ ...v, model: e.target.files?.[0] ?? null })}
-                  />
-                </Field>
-                <Field>
-                  <FieldLabel htmlFor="def-file">Definition (.urdf or .json)</FieldLabel>
-                  <Input
-                    id="def-file"
-                    type="file"
-                    accept=".urdf,.xml,.json"
-                    onChange={(e) => set({ ...v, definition: e.target.files?.[0] ?? null })}
-                  />
-                  <FieldDescription>
-                    Joint names, axes, limits and velocities. You can refine them next.
-                  </FieldDescription>
-                </Field>
-              </>
-            )}
-          />
+          canCreate && (
+            <NewDocumentDialog<Files>
+              title="New character"
+              description="Upload the figure's GLB model and, optionally, a URDF or JSON joint definition."
+              label="New character"
+              initialExtra={{ model: null, definition: null }}
+              onCreate={create}
+              extra={(v, set) => (
+                <>
+                  <Field>
+                    <FieldLabel htmlFor="model-file">3D model (.glb)</FieldLabel>
+                    <Input
+                      id="model-file"
+                      type="file"
+                      accept=".glb,model/gltf-binary"
+                      onChange={(e) => set({ ...v, model: e.target.files?.[0] ?? null })}
+                    />
+                  </Field>
+                  <Field>
+                    <FieldLabel htmlFor="def-file">Definition (.urdf or .json)</FieldLabel>
+                    <Input
+                      id="def-file"
+                      type="file"
+                      accept=".urdf,.xml,.json"
+                      onChange={(e) => set({ ...v, definition: e.target.files?.[0] ?? null })}
+                    />
+                    <FieldDescription>
+                      Joint names, axes, limits and velocities. You can refine them next.
+                    </FieldDescription>
+                  </Field>
+                </>
+              )}
+            />
+          )
         }
       />
       <PageBody>
         <DocGrid
           count={data.length}
-          empty={{ icon: Bot, title: 'No figures yet', description: 'Upload a GLB model and its URDF or JSON definition.' }}
+          empty={{
+            icon: Bot,
+            title: 'No figures yet',
+            description: 'Upload a GLB model and its URDF or JSON definition.',
+          }}
         >
           {data.map((d) => (
             <CharacterCard key={d.id} doc={d} />

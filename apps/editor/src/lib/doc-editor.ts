@@ -5,6 +5,7 @@ import { type Draft, produce } from 'immer'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { ApiError, api } from './api'
+import { useCanEditDoc } from './project'
 import { docQuery, qk } from './queries'
 
 export type SaveStatus = 'saved' | 'unsaved' | 'saving' | 'conflict' | 'error'
@@ -34,6 +35,8 @@ export function useDocEditor<K extends DocKind>(id: string, kind: K) {
   const { data: doc } = useSuspenseQuery(docQuery(id))
   if (doc.kind !== kind) throw new Error(`${id} is a ${doc.kind}, expected ${kind}`)
   const [generation, setGeneration] = useState(0)
+  // Read-only for anyone who may not edit: changes are ignored and nothing is saved.
+  const canEdit = useCanEditDoc(doc)
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: recreate only on reload (generation) or a different doc
   const store = useMemo(
@@ -57,6 +60,7 @@ export function useDocEditor<K extends DocKind>(id: string, kind: K) {
 
   const update = useCallback(
     (recipe: (d: Draft<T>) => void, coalesceKey?: string) => {
+      if (!canEdit) return
       store.setState((s) => {
         const next = produce(s.present, recipe) as T
         if (next === s.present) return s
@@ -73,7 +77,7 @@ export function useDocEditor<K extends DocKind>(id: string, kind: K) {
         }
       })
     },
-    [store],
+    [store, canEdit],
   )
 
   const undo = useCallback(() => {
@@ -180,6 +184,7 @@ export function useDocEditor<K extends DocKind>(id: string, kind: K) {
 
   return {
     doc,
+    canEdit,
     draft,
     version: useSelector(store, (s) => s.version),
     status,

@@ -65,7 +65,9 @@ func load_glb(bytes: PackedByteArray) -> String:
 		if axis.length_squared() == 0.0:
 			continue
 		var entry := {"name": joint["name"], "type": joint["type"], "home": float(joint["home"]), "axis": axis.normalized()}
-		var node: Node3D = by_name.get(key)
+		# A bone wins over a node of the same name: the importer wraps meshes attached to a bone
+		# (a hat on "head") in a BoneAttachment3D named after it, which the skeleton overwrites.
+		var node: Node3D = null if bones.has(String(joint["node"])) else by_name.get(key)
 		if node != null:
 			if not _rest.has(node):
 				_rest[node] = {"q": node.quaternion, "p": node.position}

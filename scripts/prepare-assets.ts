@@ -4,7 +4,8 @@
  * animations are removed (shows pose the joints themselves); metallic-by-default
  * materials are made matte. Sources and licenses: samples/ASSETS.md.
  *
- *   bun scripts/prepare-assets.ts <sources-dir>
+ *   bun scripts/prepare-assets.ts <sources-dir>                 # everything
+ *   bun scripts/prepare-assets.ts <sources-dir> guest.glb       # only the named outputs
  */
 import { mkdirSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
@@ -20,11 +21,13 @@ interface Job {
   lift?: number | 'auto'
   /** Prop variants to remove (e.g. the wand and spellbooks the wizard does not carry). */
   drop?: string[]
+  /** Animations to keep (all others are removed). */
+  keep?: string[]
   matte?: boolean
 }
 
 const FIGURES: Job[] = [
-  { out: 'dragon.glb', src: 'opengameart-cethiel-dragon/dragon.glb', scale: 2.6, lift: 0.298 },
+  { out: 'dragon.glb', src: 'opengameart-cethiel-dragon/dragon.glb', scale: 3.3, lift: 0.298 },
   {
     out: 'wizard.glb',
     src: 'kaykit-adventures/characters/Mage.glb',
@@ -40,6 +43,15 @@ const FIGURES: Job[] = [
     drop: ['1H_Crossbow', '2H_Crossbow', 'Throwable', 'Knife_Offhand'],
   },
   { out: 'treasure-chest.glb', src: 'kaykit-dungeon/props/chest_gold.glb', scale: 0.85, lift: 'auto' },
+  {
+    // The visitor you walk through the Godot twin: unarmed, with its idle, walk and cheer cycles.
+    out: '../apps/godot-sim/models/guest.glb',
+    src: 'kaykit-adventures/characters/Barbarian.glb',
+    scale: 0.72,
+    lift: 0,
+    drop: ['1H_Axe_Offhand', 'Barbarian_Round_Shield', '1H_Axe', '2H_Axe', 'Mug'],
+    keep: ['Idle', 'Walking_A', 'Cheer'],
+  },
 ]
 
 const p = (name: string, src: string, scale: number, matte = false): Job => ({
@@ -76,12 +88,20 @@ if (!sources) throw new Error('usage: bun scripts/prepare-assets.ts <sources-dir
 const out = resolve(import.meta.dirname, '../samples')
 const io = new NodeIO()
 
-for (const job of [...FIGURES, ...SCENERY]) {
+const only = process.argv[3]?.split(',')
+for (const job of [...FIGURES, ...SCENERY].filter((j) => !only || only.some((o) => j.out.endsWith(o)))) {
   const doc = await io.read(join(sources, job.src))
   const root = doc.getRoot()
   for (const node of root.listNodes()) if (job.drop?.includes(node.getName())) node.dispose()
-  for (const animation of root.listAnimations()) animation.dispose()
-  if (job.matte) for (const m of root.listMaterials()) m.setMetallicFactor(0).setRoughnessFactor(0.9)
+  for (const animation of root.listAnimations()) if (!job.keep?.includes(animation.getName())) animation.dispose()
+  // Kenney's kit is authored unlit and pale: make it matte, dark cave stone.
+  if (job.matte)
+    for (const m of root.listMaterials()) {
+      const [r, g, b, a] = m.getBaseColorFactor()
+      m.setMetallicFactor(0)
+        .setRoughnessFactor(0.92)
+        .setBaseColorFactor([r * 0.15, g * 0.145, b * 0.16, a])
+    }
 
   const scene = root.getDefaultScene() ?? root.listScenes()[0]
   if (!scene) throw new Error(`${job.src} has no scene`)

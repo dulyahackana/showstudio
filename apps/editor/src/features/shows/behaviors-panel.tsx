@@ -1,6 +1,7 @@
 import { type EnvironmentDefinition, SENSOR_EVENTS, type SensorEvent, type ShowDefinition } from '@studio/schema'
 import type { Draft } from 'immer'
 import { Pencil, Plus, Radar, Trash, Zap } from 'lucide-react'
+import { EditButton, useEditable } from '@/components/editable'
 import { NumberInput } from '@/components/fields'
 import { ToneBadge } from '@/components/status'
 import { Button } from '@/components/ui/button'
@@ -33,6 +34,7 @@ export function BehaviorsPanel({
   playback: Playback
   activeBehaviors: readonly string[]
 }) {
+  const editable = useEditable()
   const sensors = environment.sensors
   const add = () => {
     const sensor = sensors[0]
@@ -65,9 +67,9 @@ export function BehaviorsPanel({
             Bounded reactions to guests, decided in the park by the local show controller (never the cloud). Each one
             blends in from wherever the figures are, plays a clip and blends back, so it is provably safe from any pose.
           </p>
-          <Button size="sm" variant="outline" onClick={add} disabled={!sensors.length} data-testid="add-behavior">
+          <EditButton size="sm" variant="outline" onClick={add} disabled={!sensors.length} data-testid="add-behavior">
             <Plus /> Response
-          </Button>
+          </EditButton>
         </div>
         {!sensors.length && <p className="text-warn">This environment has no sensors.</p>}
         <div className="grid gap-3 2xl:grid-cols-2">
@@ -131,9 +133,9 @@ export function BehaviorsPanel({
                       variant={editing ? 'default' : 'outline'}
                       onClick={() => setTarget(editing ? { kind: 'main' } : { kind: 'behavior', id: b.id })}
                     >
-                      <Pencil /> {editing ? 'Done' : 'Edit clip'}
+                      <Pencil /> {editing ? 'Done' : editable ? 'Edit clip' : 'View clip'}
                     </Button>
-                    <Button
+                    <EditButton
                       size="icon-sm"
                       variant="ghost"
                       aria-label="Delete response"
@@ -143,7 +145,7 @@ export function BehaviorsPanel({
                       }}
                     >
                       <Trash />
-                    </Button>
+                    </EditButton>
                   </div>
                 </div>
 
@@ -154,6 +156,10 @@ export function BehaviorsPanel({
                     onValueChange={(sensorId) =>
                       set((x) => {
                         x.trigger.sensorId = sensorId
+                        // Keep the event valid for the new sensor (a button only reports "press").
+                        const type = sensors.find((s) => s.deviceId === sensorId)?.type
+                        const events: readonly SensorEvent[] = type ? SENSOR_EVENTS[type] : []
+                        if (!events.includes(x.trigger.event)) x.trigger.event = events[0] ?? x.trigger.event
                       })
                     }
                   >
@@ -163,7 +169,10 @@ export function BehaviorsPanel({
                     <SelectContent>
                       {sensors.map((s) => (
                         <SelectItem key={s.deviceId} value={s.deviceId}>
-                          {s.name}
+                          {s.name}{' '}
+                          <span className="font-mono text-[10px] text-muted-foreground">
+                            {s.deviceId} · {s.type}
+                          </span>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -278,12 +287,23 @@ export function BehaviorsPanel({
 }
 
 /** Blend in → clip → blend back, then the cooldown before it may fire again. */
-function TimingDiagram({ blendMs, durationMs, cooldownMs }: { blendMs: number; durationMs: number; cooldownMs: number }) {
+function TimingDiagram({
+  blendMs,
+  durationMs,
+  cooldownMs,
+}: {
+  blendMs: number
+  durationMs: number
+  cooldownMs: number
+}) {
   const total = 2 * blendMs + durationMs + cooldownMs || 1
   const w = (ms: number) => `${(ms / total) * 100}%`
   const seg = (ms: number, label: string, cls: string) =>
     ms > 0 && (
-      <div className={cn('relative flex h-full min-w-0 items-center justify-center overflow-hidden', cls)} style={{ width: w(ms) }}>
+      <div
+        className={cn('relative flex h-full min-w-0 items-center justify-center overflow-hidden', cls)}
+        style={{ width: w(ms) }}
+      >
         <span className="truncate px-1 font-mono text-[10px]">
           {label} {(ms / 1000).toFixed(1)}s
         </span>
@@ -294,7 +314,11 @@ function TimingDiagram({ blendMs, durationMs, cooldownMs }: { blendMs: number; d
       {seg(blendMs, 'blend', 'bg-gradient-to-r from-primary/5 to-primary/30 text-primary')}
       {seg(durationMs, 'clip', 'bg-primary/45 font-medium text-primary-foreground')}
       {seg(blendMs, 'back', 'bg-gradient-to-r from-primary/30 to-primary/5 text-primary')}
-      {seg(cooldownMs, 'cooldown', 'bg-[repeating-linear-gradient(45deg,transparent_0_6px,oklch(1_0_0/5%)_6px_12px)] text-muted-foreground')}
+      {seg(
+        cooldownMs,
+        'cooldown',
+        'bg-[repeating-linear-gradient(45deg,transparent_0_6px,oklch(1_0_0/5%)_6px_12px)] text-muted-foreground',
+      )}
     </div>
   )
 }

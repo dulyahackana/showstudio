@@ -40,13 +40,13 @@ erDiagram
   SHOW_RUN }o--|| SHOW_BUNDLE : plays
 ```
 
-| Entity                         | What it is                                                                                                                                                                                     | Key rules                                                                                                                            |
-| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| **CharacterDefinition**        | Digital twin of a physical figure: GLB model, footprint, joints (`node`, `axis`, `min/max`, `home`, `maxVelocity`).                                                                            | Joints are bound to glTF node names. `home ∈ [min, max]`. Footprint = bounding box of the full range of motion.                      |
-| **EnvironmentDefinition**      | One attraction: stage box, keep-out zones, ambient, palette, and every device: placements (figures), light fixtures (DMX universe/address), audio zones (dBFS ceiling), sensors (type, range). | Device ids unique across the attraction. Footprints inside the stage, never intersecting keep-out zones.                             |
-| **ShowDefinition**             | A timeline for one environment revision: `tracks` (motion per figure/joint, light keys per fixture, audio cues per zone) and `behaviors`.                                                      | Keys strictly ordered, inside the duration, within limits; speeds ≤ `maxVelocity` including the move from home; cues ≤ zone ceiling. |
-| **Behavior** (sensor response) | Trigger (`sensorId` + event), optional show-time window, `blendMs`, `cooldownMs`, and a short clip (its own `Tracks`).                                                                         | Bounded clips, not scripts: blend in from _any_ pose and back, so the validator can prove safety.                                    |
-| **ShowBundle**                 | Compiled, per-device artifact the fleet ships.                                                                                                                                                 | Deterministic; content-addressed; signed on approval.                                                                                |
+| Entity                         | What it is                                                                                                                                                                                                                                                                      | Key rules                                                                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| **CharacterDefinition**        | Digital twin of a physical figure: GLB model, footprint, joints (`node`, `axis`, `min/max`, `home`, `maxVelocity`).                                                                                                                                                             | Joints are bound to glTF node names. `home ∈ [min, max]`. Footprint = bounding box of the full range of motion.                      |
+| **EnvironmentDefinition**      | One attraction: stage box, keep-out zones, ambient, palette, and every device: placements (figures), light fixtures (DMX universe/address), audio zones (dBFS ceiling), sensors (type, range), plus **scenery** (static set dressing for previews and twins; never in bundles). | Device ids unique across the attraction (not across attractions). Footprints inside the stage, never intersecting keep-out zones.    |
+| **ShowDefinition**             | A timeline for one environment revision: `tracks` (motion per figure/joint, light keys per fixture, audio cues per zone) and `behaviors`.                                                                                                                                       | Keys strictly ordered, inside the duration, within limits; speeds ≤ `maxVelocity` including the move from home; cues ≤ zone ceiling. |
+| **Behavior** (sensor response) | Trigger (`sensorId` + event), optional show-time window, `blendMs`, `cooldownMs`, and a short clip (its own `Tracks`).                                                                                                                                                          | Bounded clips, not scripts: blend in from _any_ pose and back, so the validator can prove safety.                                    |
+| **ShowBundle**                 | Compiled, per-device artifact the fleet ships.                                                                                                                                                                                                                                  | Deterministic; content-addressed; signed on approval.                                                                                |
 
 ### Tracks and interpolation
 
@@ -63,6 +63,30 @@ Tracks = { motion:  deviceId -> joint -> MotionKey[]   (t, v, interp)
 Local time from trigger: `[0, blend)` blend from the pose at trigger time to the clip's first value (clip clock held) → `[blend, blend+dur)` clip → `[blend+dur, 2·blend+dur)` blend to where the main timeline will be at the end. Scheduling is deterministic: trigger + event match, inside window, past cooldown (measured from the end of the previous run), and no running behavior shares a device. The park-local show controller arbitrates and broadcasts decisions so devices agree.
 
 Validation proves the blend is safe from _anywhere_: `1.5 · max(|start − min|, |max − start|) / blend ≤ maxVelocity` (same for the clip end). A property test checks the sampled trajectory never exceeds `maxVelocity`.
+
+## Workspace, locations, library and projects
+
+```mermaid
+erDiagram
+  WORKSPACE ||--|{ LOCATION : "physical sites"
+  WORKSPACE ||--o{ CHARACTER : "library"
+  LOCATION ||--o{ ENVIRONMENT : "installed at"
+  ENVIRONMENT }o--o{ CHARACTER : "pins revisions"
+  WORKSPACE ||--o{ PROJECT : contains
+  PROJECT ||--|| SHOW : "is one"
+  SHOW }o--|| ENVIRONMENT : "pins a revision"
+  PROJECT ||--o{ PROJECT_MEMBER : "team"
+```
+
+| Concept      | Rule                                                                                                                                                                                                                                          |
+| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workspace    | The tenant (company). Static in this prototype (`GET /workspace`): name, plan, region, people directory. Production reads it from the identity provider.                                                                                      |
+| Location     | A physical site (park, studio, test lab). Holds environments (`documents.location_id`). Visible to everyone in the workspace, with its live fleet state.                                                                                      |
+| Library      | Characters and assets. Shared by every environment; engineers edit them.                                                                                                                                                                      |
+| Project      | One show (same id) for one environment, from first keyframe to launch: ① Animate → ② Review → ③ Deploy → ④ Launch. Created together with its show; private to its team.                                                                       |
+| Project role | `owner` (everything + team), `editor` (animate/publish), `reviewer` (approve/reject), `operator` (deploy/launch), `viewer` (read). Matrix: `PROJECT_PERMISSIONS` in [`project.ts`](../packages/schema/src/project.ts).                        |
+| Two layers   | Workspace roles (engineer, safety, operator, admin) say what kind of work someone does; project roles say on which shows. Both must allow an action; admins bypass. Non-members get `404`, so names do not leak.                              |
+| Invariants   | A show always has a project and an environment always has a location (database check). A project keeps at least one owner. Membership changes are audited. The software e-stop stays available to any signed-in user: safety outranks access. |
 
 ## Versioning and immutability
 
@@ -102,8 +126,26 @@ erDiagram
   bundles ||--o{ deployments : "sha256"
   bundles ||--o{ desired_bundles : "sha256"
   devices ||--o{ desired_bundles : "(environment_id, device_id)"
+  projects ||--o| documents : "project_id (shows)"
+  locations ||--o{ documents : "location_id (environments)"
+  projects ||--o{ project_members : "project_id"
+  projects {
+    text id PK "= the show's id"
+  }
+  locations {
+    text id PK
+    text name
+    text region
+  }
+  project_members {
+    text project_id PK
+    text user_name PK
+    text role "owner|editor|reviewer|operator|viewer"
+  }
   documents {
     text id PK
+    text project_id FK "shows only"
+    text location_id FK "environments only"
     text kind "character|environment|show"
     jsonb draft "mutable working copy"
     int draft_version "concurrency token"

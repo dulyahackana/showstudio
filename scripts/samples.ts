@@ -35,7 +35,7 @@ export const dragon: Figure = {
   name: 'Ember the Dragon',
   description: 'Hero figure: a four-legged dragon asleep on its hoard. Skeleton-driven neck, jaw, wings and tail.',
   model: 'dragon.glb',
-  footprint: [1.8, 2.3, 3.2],
+  footprint: [2.3, 2.9, 4.1],
   joints: [
     j('neck_raise', 'neck1', [-0.97, -0.23, 0], [-15, 35], 30),
     j('neck_turn', 'neck2', [0.13, 0, -0.99], [-40, 40], 45),

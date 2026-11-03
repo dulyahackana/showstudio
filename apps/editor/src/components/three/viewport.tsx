@@ -1,8 +1,8 @@
-import { ContactShadows, Environment, Grid, Lightformer, OrbitControls } from '@react-three/drei'
+import { ContactShadows, Environment, Grid, OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { Bloom, EffectComposer, SMAA, ToneMapping, Vignette } from '@react-three/postprocessing'
-import { ToneMappingMode } from 'postprocessing'
 import type { Vec3 } from '@studio/schema'
+import { ToneMappingMode } from 'postprocessing'
 import { type ReactNode, Suspense } from 'react'
 import * as THREE from 'three'
 import { cn } from '@/lib/utils'
@@ -43,7 +43,11 @@ export function Viewport({
   shadowScale?: number
 }) {
   return (
-    <div className={cn('relative h-full w-full overflow-hidden', className)} style={{ background: BG }} data-testid="viewport">
+    <div
+      className={cn('relative h-full w-full overflow-hidden', className)}
+      style={{ background: BG }}
+      data-testid="viewport"
+    >
       <Canvas
         camera={{ position: camera, fov: 40, near: 0.05, far: 300 }}
         dpr={[1, 2]}
@@ -53,7 +57,13 @@ export function Viewport({
         <color attach="background" args={[BG]} />
         <fog attach="fog" args={[BG, 22, 60]} />
         <hemisphereLight intensity={0.5} color="#cfe3ff" groundColor="#0f172a" />
-        <directionalLight position={[6, 10, 6]} intensity={1.15} color="#fff3e0" castShadow shadow-mapSize={[1024, 1024]} />
+        <directionalLight
+          position={[6, 10, 6]}
+          intensity={1.15}
+          color="#fff3e0"
+          castShadow
+          shadow-mapSize={[1024, 1024]}
+        />
         <directionalLight position={[-6, 4, -6]} intensity={0.55} color="#5cc8ea" />
         <Grid
           infiniteGrid
@@ -67,14 +77,17 @@ export function Viewport({
           sectionThickness={1}
           position={[0, -0.002, 0]}
         />
-        <ContactShadows position={[0, 0.001, 0]} scale={shadowScale} blur={2.4} opacity={0.55} far={4} resolution={512} frames={Number.POSITIVE_INFINITY} />
-        {/* Image-based lighting from virtual light panels: real reflections without an HDRI download. */}
-        <Environment resolution={256} frames={1} environmentIntensity={0.55}>
-          <Lightformer form="rect" intensity={2.4} color="#ffd9a8" position={[5, 6, 4]} scale={[6, 3, 1]} target={[0, 0, 0]} />
-          <Lightformer form="rect" intensity={1.6} color="#5cc8ea" position={[-6, 3, -4]} scale={[5, 2, 1]} target={[0, 0, 0]} />
-          <Lightformer form="ring" intensity={1.2} color="#ffffff" position={[0, 8, 0]} scale={4} target={[0, 0, 0]} />
-          <Lightformer form="rect" intensity={0.6} color="#7c5cff" position={[0, 1, -8]} scale={[10, 2, 1]} target={[0, 0, 0]} />
-        </Environment>
+        <ContactShadows
+          position={[0, 0.001, 0]}
+          scale={shadowScale}
+          blur={2.4}
+          opacity={0.55}
+          far={4}
+          resolution={512}
+          frames={Number.POSITIVE_INFINITY}
+        />
+        {/* Image-based lighting from a CC0 cave HDRI (Poly Haven), for believable reflections. */}
+        <Environment files="/hdri/drachenfels_cellar_1k.hdr" environmentIntensity={0.65} />
         <Suspense fallback={null}>{children}</Suspense>
         <EffectComposer multisampling={0}>
           <Bloom luminanceThreshold={0.82} luminanceSmoothing={0.2} intensity={0.85} mipmapBlur />
@@ -92,6 +105,8 @@ export function Viewport({
 /** Frosted panel floating over a viewport. */
 export function Glass({ children, className }: { children: ReactNode; className?: string }) {
   return (
-    <div className={cn('rounded-xl border border-white/10 bg-[#0b111d]/75 shadow-2xl backdrop-blur-md', className)}>{children}</div>
+    <div className={cn('rounded-xl border border-white/10 bg-[#0b111d]/75 shadow-2xl backdrop-blur-md', className)}>
+      {children}
+    </div>
   )
 }

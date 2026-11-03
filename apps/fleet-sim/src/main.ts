@@ -4,7 +4,8 @@ import { startFleet } from './fleet.ts'
 const { values } = parseArgs({
   options: {
     api: { type: 'string', default: process.env.STUDIO_API_URL ?? 'http://localhost:4000' },
-    env: { type: 'string', default: process.env.STUDIO_ENVIRONMENT ?? 'dragons-lair' },
+    // Repeat --env to run several attractions side by side, each with its own controllers.
+    env: { type: 'string', multiple: true, default: (process.env.STUDIO_ENVIRONMENT ?? 'dragons-lair').split(',') },
     token: { type: 'string', default: process.env.PROVISIONING_TOKEN ?? 'dev-provisioning-token' },
     data: { type: 'string', default: process.env.FLEET_DATA_DIR ?? './data/fleet-sim' },
     corrupt: { type: 'string', multiple: true, default: [] },
@@ -21,23 +22,29 @@ for (const id of values.corrupt) faults[id] = { ...faults[id], corruptDownloads:
 for (const id of values['outdated-firmware'])
   faults[id] = { ...faults[id], characterRef: { id: 'outdated', revision: 1 } }
 
-const fleet = await startFleet({
-  apiUrl: values.api,
-  environmentId: values.env,
-  provisioningToken: values.token,
-  dataDir: values.data,
-  faults,
-  log,
-})
-log(
-  `simulating ${fleet.devices.length} devices for ${values.env}@${fleet.provisioning.environment.revision}: ${fleet.devices
-    .map((d) => `${d.id}(${d.kind})`)
-    .join(', ')}`,
+const fleets = await Promise.all(
+  values.env.map(async (environmentId) => {
+    const fleet = await startFleet({
+      apiUrl: values.api,
+      environmentId,
+      provisioningToken: values.token,
+      dataDir: values.data,
+      faults,
+      log: (msg) => log(values.env.length > 1 ? `{${environmentId}} ${msg}` : msg),
+    })
+    log(
+      `simulating ${fleet.devices.length} devices for ${environmentId}@${fleet.provisioning.environment.revision}: ${fleet.devices
+        .map((d) => `${d.id}(${d.kind})`)
+        .join(', ')}`,
+    )
+    return fleet
+  }),
 )
+const devices = fleets.flatMap((f) => f.devices)
 
 if (!values.quiet) {
   setInterval(() => {
-    const running = fleet.devices.filter((d) => d.state === 'running')
+    const running = devices.filter((d) => d.state === 'running')
     if (running.length === 0) return
     const parts = running
       .filter((d) => d.kind === 'doll' || d.kind === 'light')
@@ -54,7 +61,7 @@ if (!values.quiet) {
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
-    fleet.stop()
+    for (const f of fleets) f.stop()
     process.exit(0)
   })
 }

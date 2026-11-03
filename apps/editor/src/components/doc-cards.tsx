@@ -1,25 +1,20 @@
-import type {
-  CharacterDefinition,
-  DocumentSummary,
-  EnvironmentDefinition,
-  ShowDefinition,
-} from '@studio/schema'
+import type { CharacterDefinition, DocumentSummary, EnvironmentDefinition } from '@studio/schema'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { Clock, Radar } from 'lucide-react'
+import type { Clock } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { FloorPlan } from '@/components/floor-plan'
 import { KIND, KindIcon } from '@/components/kind'
 import { ModelThumb } from '@/components/model-thumb'
-import { ShowStrip } from '@/components/show-strip'
 import { ToneBadge } from '@/components/status'
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from '@/components/ui/empty'
-import { formatMs, timeAgo } from '@/lib/format'
+import { timeAgo } from '@/lib/format'
 import { docQuery, useCharacters } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 
 export function DocStatus({ doc, reviewed = false }: { doc: DocumentSummary; reviewed?: boolean }) {
-  if (reviewed && doc.latestApprovedRevision) return <ToneBadge t="ok">approved r{doc.latestApprovedRevision}</ToneBadge>
+  if (reviewed && doc.latestApprovedRevision)
+    return <ToneBadge t="ok">approved r{doc.latestApprovedRevision}</ToneBadge>
   if (reviewed && doc.latestRevision) return <ToneBadge t="warn">r{doc.latestRevision} in review</ToneBadge>
   if (doc.latestRevision) return <ToneBadge t="info">published r{doc.latestRevision}</ToneBadge>
   return <ToneBadge t="muted">draft</ToneBadge>
@@ -34,7 +29,7 @@ function Card({
   meta,
   doc,
 }: {
-  to: '/characters/$id' | '/environments/$id' | '/shows/$id'
+  to: '/characters/$id' | '/environments/$id'
   id: string
   preview: ReactNode
   title: string
@@ -46,7 +41,7 @@ function Card({
     <Link
       to={to}
       params={{ id }}
-      className="group flex flex-col overflow-hidden rounded-xl border bg-card transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_12px_40px_-16px_oklch(0.8_0.155_72/35%)]"
+      className="group flex flex-col overflow-hidden rounded-xl border bg-card transition hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_12px_40px_-16px_oklch(0.79_0.17_155/35%)]"
       data-testid={`card-${id}`}
     >
       <div className="bg-blueprint relative aspect-[16/10] overflow-hidden border-b bg-sidebar">{preview}</div>
@@ -80,7 +75,7 @@ export function CharacterCard({ doc }: { doc: DocumentSummary }) {
       preview={
         <>
           <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-motion/10 to-transparent" />
-          <ModelThumb assetId={c?.model?.assetId} className="absolute inset-0 h-full w-full p-3" />
+          <ModelThumb assetId={c?.model?.assetId} joints={c?.joints} className="absolute inset-0 h-full w-full p-3" />
         </>
       }
       meta={
@@ -89,9 +84,7 @@ export function CharacterCard({ doc }: { doc: DocumentSummary }) {
             <span className="inline-flex items-center gap-1">
               <KindIcon kind="doll" className="size-3.5" /> {c.joints.length} joints
             </span>
-            <span className="font-mono">
-              {c.footprint.size.map((n) => n.toFixed(1)).join(' × ')} m
-            </span>
+            <span className="font-mono">{c.footprint.size.map((n) => n.toFixed(1)).join(' × ')} m</span>
           </>
         )
       }
@@ -124,46 +117,6 @@ export function EnvironmentCard({ doc }: { doc: DocumentSummary }) {
           <KindIcon kind={kind} className="size-3.5" /> {n}
         </span>
       ))}
-    />
-  )
-}
-
-export function ShowCard({ doc }: { doc: DocumentSummary }) {
-  const { data } = useQuery(docQuery(doc.id))
-  const show = data?.draft as ShowDefinition | undefined
-  return (
-    <Card
-      to="/shows/$id"
-      id={doc.id}
-      doc={doc}
-      title={doc.name}
-      status={<DocStatus doc={doc} reviewed />}
-      preview={
-        show && (
-          <div className="absolute inset-0 flex flex-col justify-center gap-2 px-4">
-            <ShowStrip show={show} className="h-24" />
-            <div className="flex justify-between font-mono text-[10px] text-muted-foreground">
-              <span>0:00</span>
-              <span>{formatMs(show.durationMs, false)}</span>
-            </div>
-          </div>
-        )
-      }
-      meta={
-        show && (
-          <>
-            <span className="inline-flex items-center gap-1">
-              <Clock className="size-3.5" /> {formatMs(show.durationMs, false)}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Radar className="size-3.5 text-sensor" /> {show.behaviors.length} responses
-            </span>
-            <span className="font-mono">
-              {show.environment.id}@{show.environment.revision}
-            </span>
-          </>
-        )
-      }
     />
   )
 }

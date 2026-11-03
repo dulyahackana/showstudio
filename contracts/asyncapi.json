@@ -735,8 +735,26 @@
             "$ref": "#/components/schemas/Id"
           },
           "projectId": {
-            "description": "Owning project; access is granted per project",
-            "$ref": "#/components/schemas/Id"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shows: their project (same id), which grants access. Otherwise null"
+          },
+          "locationId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Environments: the location they are installed at. Otherwise null"
           },
           "name": {
             "type": "string"
@@ -771,6 +789,17 @@
               }
             ]
           },
+          "latestRevisionStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevisionStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Review state of latestRevision"
+          },
           "latestApprovedRevision": {
             "anyOf": [
               {
@@ -791,6 +820,7 @@
           "kind",
           "id",
           "projectId",
+          "locationId",
           "name",
           "draftVersion",
           "createdAt",
@@ -798,6 +828,7 @@
           "updatedAt",
           "updatedBy",
           "latestRevision",
+          "latestRevisionStatus",
           "latestApprovedRevision",
           "draft"
         ],
@@ -833,9 +864,6 @@
               "id": {
                 "$ref": "#/components/schemas/Id"
               },
-              "projectId": {
-                "$ref": "#/components/schemas/Id"
-              },
               "draft": {
                 "$ref": "#/components/schemas/CharacterDefinition"
               }
@@ -843,7 +871,6 @@
             "required": [
               "kind",
               "id",
-              "projectId",
               "draft"
             ],
             "additionalProperties": false
@@ -858,7 +885,7 @@
               "id": {
                 "$ref": "#/components/schemas/Id"
               },
-              "projectId": {
+              "locationId": {
                 "$ref": "#/components/schemas/Id"
               },
               "draft": {
@@ -868,39 +895,15 @@
             "required": [
               "kind",
               "id",
-              "projectId",
-              "draft"
-            ],
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "properties": {
-              "kind": {
-                "type": "string",
-                "const": "show"
-              },
-              "id": {
-                "$ref": "#/components/schemas/Id"
-              },
-              "projectId": {
-                "$ref": "#/components/schemas/Id"
-              },
-              "draft": {
-                "$ref": "#/components/schemas/ShowDefinition"
-              }
-            },
-            "required": [
-              "kind",
-              "id",
-              "projectId",
+              "locationId",
               "draft"
             ],
             "additionalProperties": false
           }
-        ]
+        ],
+        "description": "Characters go to the library, environments to a location. Shows are created with their project"
       },
-      "CreateProjectRequest": {
+      "CreateLocationRequest": {
         "type": "object",
         "properties": {
           "id": {
@@ -909,6 +912,11 @@
           "name": {
             "type": "string",
             "minLength": 1,
+            "maxLength": 120
+          },
+          "region": {
+            "default": "",
+            "type": "string",
             "maxLength": 120
           },
           "description": {
@@ -920,7 +928,25 @@
         "required": [
           "id",
           "name",
+          "region",
           "description"
+        ],
+        "additionalProperties": false
+      },
+      "CreateProjectRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "draft": {
+            "description": "Initial show draft; its name and description name the project",
+            "$ref": "#/components/schemas/ShowDefinition"
+          }
+        },
+        "required": [
+          "id",
+          "draft"
         ],
         "additionalProperties": false
       },
@@ -1265,8 +1291,26 @@
             "$ref": "#/components/schemas/Id"
           },
           "projectId": {
-            "description": "Owning project; access is granted per project",
-            "$ref": "#/components/schemas/Id"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shows: their project (same id), which grants access. Otherwise null"
+          },
+          "locationId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Environments: the location they are installed at. Otherwise null"
           },
           "name": {
             "type": "string"
@@ -1301,6 +1345,17 @@
               }
             ]
           },
+          "latestRevisionStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevisionStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Review state of latestRevision"
+          },
           "latestApprovedRevision": {
             "anyOf": [
               {
@@ -1318,6 +1373,7 @@
           "kind",
           "id",
           "projectId",
+          "locationId",
           "name",
           "draftVersion",
           "createdAt",
@@ -1325,6 +1381,7 @@
           "updatedAt",
           "updatedBy",
           "latestRevision",
+          "latestRevisionStatus",
           "latestApprovedRevision"
         ],
         "additionalProperties": false
@@ -1466,6 +1523,14 @@
             "items": {
               "$ref": "#/components/schemas/Sensor"
             }
+          },
+          "scenery": {
+            "default": [],
+            "description": "Set dressing for previews and digital twins",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SceneryItem"
+            }
           }
         },
         "required": [
@@ -1479,7 +1544,8 @@
           "placements",
           "lights",
           "audio",
-          "sensors"
+          "sensors",
+          "scenery"
         ],
         "additionalProperties": false
       },
@@ -1494,8 +1560,26 @@
             "$ref": "#/components/schemas/Id"
           },
           "projectId": {
-            "description": "Owning project; access is granted per project",
-            "$ref": "#/components/schemas/Id"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shows: their project (same id), which grants access. Otherwise null"
+          },
+          "locationId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Environments: the location they are installed at. Otherwise null"
           },
           "name": {
             "type": "string"
@@ -1530,6 +1614,17 @@
               }
             ]
           },
+          "latestRevisionStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevisionStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Review state of latestRevision"
+          },
           "latestApprovedRevision": {
             "anyOf": [
               {
@@ -1550,6 +1645,7 @@
           "kind",
           "id",
           "projectId",
+          "locationId",
           "name",
           "draftVersion",
           "createdAt",
@@ -1557,6 +1653,7 @@
           "updatedAt",
           "updatedBy",
           "latestRevision",
+          "latestRevisionStatus",
           "latestApprovedRevision",
           "draft"
         ],
@@ -2187,6 +2284,50 @@
         ],
         "additionalProperties": false
       },
+      "Location": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "region": {
+            "type": "string",
+            "maxLength": 120,
+            "description": "Where it is, e.g. \"Orlando, Florida\""
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/Timestamp"
+          },
+          "createdBy": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "region",
+          "description",
+          "createdAt",
+          "createdBy"
+        ],
+        "additionalProperties": false,
+        "description": "A physical site (park, studio, test lab) that holds environments"
+      },
+      "LocationList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Location"
+        }
+      },
       "MotionKey": {
         "type": "object",
         "properties": {
@@ -2249,12 +2390,16 @@
           },
           "title": {
             "type": "string"
+          },
+          "role": {
+            "type": "string"
           }
         },
         "required": [
           "name",
           "displayName",
-          "title"
+          "title",
+          "role"
         ],
         "additionalProperties": false,
         "description": "Workspace directory entry (from the identity provider in production)"
@@ -2380,16 +2525,26 @@
         "type": "object",
         "properties": {
           "id": {
+            "description": "Also the id of the project's show",
             "$ref": "#/components/schemas/Id"
           },
           "name": {
             "type": "string",
             "minLength": 1,
-            "maxLength": 120
+            "maxLength": 120,
+            "description": "The show's name"
           },
           "description": {
             "type": "string",
             "maxLength": 2000
+          },
+          "environmentId": {
+            "description": "The environment the show is made for",
+            "$ref": "#/components/schemas/Id"
+          },
+          "show": {
+            "description": "The project's show: draft, latest and latest approved revision",
+            "$ref": "#/components/schemas/DocumentSummary"
           },
           "createdAt": {
             "$ref": "#/components/schemas/Timestamp"
@@ -2413,45 +2568,21 @@
             "items": {
               "$ref": "#/components/schemas/ProjectMember"
             }
-          },
-          "counts": {
-            "type": "object",
-            "properties": {
-              "character": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              "environment": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              },
-              "show": {
-                "type": "integer",
-                "minimum": -9007199254740991,
-                "maximum": 9007199254740991
-              }
-            },
-            "required": [
-              "character",
-              "environment",
-              "show"
-            ],
-            "additionalProperties": false
           }
         },
         "required": [
           "id",
           "name",
           "description",
+          "environmentId",
+          "show",
           "createdAt",
           "createdBy",
           "myRole",
-          "members",
-          "counts"
+          "members"
         ],
-        "additionalProperties": false
+        "additionalProperties": false,
+        "description": "One show, from first keyframe to launch, and the team allowed to work on it"
       },
       "ProjectList": {
         "type": "array",
@@ -2492,7 +2623,7 @@
           "operator",
           "viewer"
         ],
-        "description": "owner: everything incl. members; editor: author documents; reviewer: approve/reject; operator: deploy/launch; viewer: read"
+        "description": "owner: everything incl. members; editor: author the show; reviewer: approve/reject; operator: deploy/launch; viewer: read"
       },
       "ProvisionedDevice": {
         "type": "object",
@@ -3125,6 +3256,51 @@
         ],
         "description": "draftVersion must match the stored draft, otherwise 409 (someone else saved first)"
       },
+      "SceneryItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "assetId": {
+                "$ref": "#/components/schemas/Sha256"
+              }
+            },
+            "required": [
+              "assetId"
+            ],
+            "additionalProperties": false
+          },
+          "position": {
+            "$ref": "#/components/schemas/Vec3"
+          },
+          "rotationY": {
+            "type": "number",
+            "description": "Yaw in degrees"
+          },
+          "scale": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "model",
+          "position",
+          "rotationY",
+          "scale"
+        ],
+        "additionalProperties": false,
+        "description": "Static set dressing (rock, treasure, pillar). Not a device: never moves and is not in bundles"
+      },
       "Sensor": {
         "type": "object",
         "properties": {
@@ -3358,8 +3534,26 @@
             "$ref": "#/components/schemas/Id"
           },
           "projectId": {
-            "description": "Owning project; access is granted per project",
-            "$ref": "#/components/schemas/Id"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Shows: their project (same id), which grants access. Otherwise null"
+          },
+          "locationId": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Id"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Environments: the location they are installed at. Otherwise null"
           },
           "name": {
             "type": "string"
@@ -3394,6 +3588,17 @@
               }
             ]
           },
+          "latestRevisionStatus": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RevisionStatus"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Review state of latestRevision"
+          },
           "latestApprovedRevision": {
             "anyOf": [
               {
@@ -3414,6 +3619,7 @@
           "kind",
           "id",
           "projectId",
+          "locationId",
           "name",
           "draftVersion",
           "createdAt",
@@ -3421,6 +3627,7 @@
           "updatedAt",
           "updatedBy",
           "latestRevision",
+          "latestRevisionStatus",
           "latestApprovedRevision",
           "draft"
         ],
@@ -3840,12 +4047,6 @@
           "region": {
             "type": "string"
           },
-          "sites": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
           "directory": {
             "type": "array",
             "items": {
@@ -3858,7 +4059,6 @@
           "name",
           "plan",
           "region",
-          "sites",
           "directory"
         ],
         "additionalProperties": false,

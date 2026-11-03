@@ -1,14 +1,14 @@
 import type { LightSample } from '@studio/playback'
 import { type CharacterDefinition, type EnvironmentDefinition, refKey, type Vec3 } from '@studio/schema'
 import { useId } from 'react'
-import { STATE_STYLE } from '@/components/kind'
+import type { STATE_STYLE } from '@/components/kind'
 import { cn } from '@/lib/utils'
 
 type DeviceStatus = keyof typeof STATE_STYLE
 
 const RING: Record<DeviceStatus, string> = {
   idle: 'stroke-muted-foreground/50',
-  ready: 'stroke-sensor',
+  ready: 'stroke-ok',
   armed: 'stroke-warn',
   running: 'stroke-motion',
   estopped: 'stroke-danger',
@@ -51,9 +51,18 @@ export function FloorPlan({
   const id = useId().replace(/:/g, '')
   const xs: number[] = [env.stage.min[0], env.stage.max[0]]
   const zs: number[] = [env.stage.min[2], env.stage.max[2]]
-  for (const k of env.keepOut) xs.push(k.box.min[0], k.box.max[0]), zs.push(k.box.min[2], k.box.max[2])
-  for (const s of env.sensors) xs.push(s.position[0] - s.range, s.position[0] + s.range), zs.push(s.position[2] - s.range, s.position[2] + s.range)
-  for (const d of [...env.lights, ...env.audio, ...env.placements]) xs.push(d.position[0]), zs.push(d.position[2])
+  for (const k of env.keepOut) {
+    xs.push(k.box.min[0], k.box.max[0])
+    zs.push(k.box.min[2], k.box.max[2])
+  }
+  for (const s of env.sensors) {
+    xs.push(s.position[0] - s.range, s.position[0] + s.range)
+    zs.push(s.position[2] - s.range, s.position[2] + s.range)
+  }
+  for (const d of [...env.lights, ...env.audio, ...env.placements]) {
+    xs.push(d.position[0])
+    zs.push(d.position[2])
+  }
   const pad = 0.8
   const minX = Math.min(...xs) - pad
   const minZ = Math.min(...zs) - pad
@@ -74,8 +83,14 @@ export function FloorPlan({
       aria-label={`Floor plan of ${env.name}`}
     >
       <defs>
-        <pattern id={`hatch-${id}`} width={0.35} height={0.35} patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1={0} y1={0} x2={0} y2={0.35} className="stroke-warn/30" strokeWidth={0.06} />
+        <pattern
+          id={`hatch-${id}`}
+          width={0.35}
+          height={0.35}
+          patternUnits="userSpaceOnUse"
+          patternTransform="rotate(45)"
+        >
+          <line x1={0} y1={0} x2={0} y2={0.35} className="stroke-foreground/20" strokeWidth={0.05} />
         </pattern>
         <pattern id={`grid-${id}`} width={1} height={1} patternUnits="userSpaceOnUse">
           <path d="M 1 0 L 0 0 0 1" fill="none" className="stroke-foreground/[0.06]" strokeWidth={0.02} />
@@ -111,7 +126,13 @@ export function FloorPlan({
           const color = `rgb(${Math.round(s.r * 255)} ${Math.round(s.g * 255)} ${Math.round(s.b * 255)})`
           return (
             <g key={`pool-${l.deviceId}`} style={{ mixBlendMode: 'screen' }}>
-              <circle cx={tx} cy={tz} r={1.1 + 0.9 * s.intensity} fill={`url(#pool-${id})`} opacity={0.55 * s.intensity} />
+              <circle
+                cx={tx}
+                cy={tz}
+                r={1.1 + 0.9 * s.intensity}
+                fill={`url(#pool-${id})`}
+                opacity={0.55 * s.intensity}
+              />
               <circle cx={tx} cy={tz} r={1.1 + 0.9 * s.intensity} fill={color} opacity={0.32 * s.intensity} />
             </g>
           )
@@ -137,7 +158,7 @@ export function FloorPlan({
             width={k.box.max[0] - k.box.min[0]}
             height={k.box.max[2] - k.box.min[2]}
             fill={`url(#hatch-${id})`}
-            className="stroke-warn/45"
+            className="stroke-foreground/30"
             strokeWidth={1}
             strokeDasharray="4 3"
             vectorEffect="non-scaling-stroke"
@@ -148,7 +169,7 @@ export function FloorPlan({
               y={(k.box.min[2] + k.box.max[2]) / 2 + font * 0.35}
               textAnchor="middle"
               fontSize={font * 0.85}
-              className="fill-warn/70 font-medium"
+              className="fill-muted-foreground font-medium"
             >
               {k.name}
             </text>
@@ -173,7 +194,15 @@ export function FloorPlan({
             />
             <circle cx={x} cy={z} r={0.11} className="fill-sensor" />
             {ring(s.deviceId) && (
-              <circle cx={x} cy={z} r={0.24} fill="none" className={ring(s.deviceId)} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+              <circle
+                cx={x}
+                cy={z}
+                r={0.24}
+                fill="none"
+                className={ring(s.deviceId)}
+                strokeWidth={1.5}
+                vectorEffect="non-scaling-stroke"
+              />
             )}
             {allLabels && (
               <text x={x} y={z + 0.5} textAnchor="middle" fontSize={font * 0.8} className="fill-sensor">
@@ -204,10 +233,19 @@ export function FloorPlan({
                 vectorEffect="non-scaling-stroke"
                 strokeDasharray={c || !characters ? undefined : '3 2'}
               />
-              <path d={`M ${-0.16} ${sz / 2 - 0.05} L 0 ${sz / 2 + 0.18} L 0.16 ${sz / 2 - 0.05} Z`} className="fill-motion" />
+              <path
+                d={`M ${-0.16} ${sz / 2 - 0.05} L 0 ${sz / 2 + 0.18} L 0.16 ${sz / 2 - 0.05} Z`}
+                className="fill-motion"
+              />
             </g>
             {labels && (
-              <text x={x} y={z + font * 0.35} textAnchor="middle" fontSize={font} className="fill-foreground font-medium">
+              <text
+                x={x}
+                y={z + font * 0.35}
+                textAnchor="middle"
+                fontSize={font}
+                className="fill-foreground font-medium"
+              >
                 {p.name}
               </text>
             )}
@@ -220,10 +258,27 @@ export function FloorPlan({
         const [x, z] = xz(a.position)
         return (
           <g key={a.deviceId} onClick={click(a.deviceId)} className={interactive}>
-            <rect x={x - 0.16} y={z - 0.16} width={0.32} height={0.32} rx={0.06} className="fill-audio/25 stroke-audio" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />
+            <rect
+              x={x - 0.16}
+              y={z - 0.16}
+              width={0.32}
+              height={0.32}
+              rx={0.06}
+              className="fill-audio/25 stroke-audio"
+              strokeWidth={1.2}
+              vectorEffect="non-scaling-stroke"
+            />
             <circle cx={x} cy={z} r={0.07} className="fill-audio" />
             {ring(a.deviceId) && (
-              <circle cx={x} cy={z} r={0.28} fill="none" className={ring(a.deviceId)} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+              <circle
+                cx={x}
+                cy={z}
+                r={0.28}
+                fill="none"
+                className={ring(a.deviceId)}
+                strokeWidth={1.5}
+                vectorEffect="non-scaling-stroke"
+              />
             )}
             {allLabels && (
               <text x={x} y={z + 0.55} textAnchor="middle" fontSize={font * 0.8} className="fill-audio">
@@ -240,10 +295,21 @@ export function FloorPlan({
         const [tx, tz] = xz(l.target)
         const s = lights?.[l.deviceId]
         const lit = s && s.intensity > 0.01
-        const color = lit ? `rgb(${Math.round(s.r * 255)} ${Math.round(s.g * 255)} ${Math.round(s.b * 255)})` : undefined
+        const color = lit
+          ? `rgb(${Math.round(s.r * 255)} ${Math.round(s.g * 255)} ${Math.round(s.b * 255)})`
+          : undefined
         return (
           <g key={l.deviceId} onClick={click(l.deviceId)} className={interactive}>
-            <line x1={x} y1={z} x2={tx} y2={tz} className="stroke-light/40" strokeWidth={1} strokeDasharray="2 3" vectorEffect="non-scaling-stroke" />
+            <line
+              x1={x}
+              y1={z}
+              x2={tx}
+              y2={tz}
+              className="stroke-light/40"
+              strokeWidth={1}
+              strokeDasharray="2 3"
+              vectorEffect="non-scaling-stroke"
+            />
             <circle
               cx={x}
               cy={z}
@@ -255,9 +321,27 @@ export function FloorPlan({
               strokeWidth={1}
               vectorEffect="non-scaling-stroke"
             />
-            {!lit && <circle cx={x} cy={z} r={0.17} fill="none" className="stroke-light" strokeWidth={1.2} vectorEffect="non-scaling-stroke" />}
+            {!lit && (
+              <circle
+                cx={x}
+                cy={z}
+                r={0.17}
+                fill="none"
+                className="stroke-light"
+                strokeWidth={1.2}
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
             {ring(l.deviceId) && (
-              <circle cx={x} cy={z} r={0.28} fill="none" className={ring(l.deviceId)} strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+              <circle
+                cx={x}
+                cy={z}
+                r={0.28}
+                fill="none"
+                className={ring(l.deviceId)}
+                strokeWidth={1.5}
+                vectorEffect="non-scaling-stroke"
+              />
             )}
             {allLabels && (
               <text x={x} y={z - 0.32} textAnchor="middle" fontSize={font * 0.8} className="fill-light">

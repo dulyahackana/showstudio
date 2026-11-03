@@ -14,7 +14,7 @@ import { Metrics } from './metrics.ts'
 import { HttpProblem, problems } from './problems.ts'
 import { issueSession, loadSigner, type Signer } from './security.ts'
 import { FleetService } from './services/fleet.ts'
-import { ProjectService, WORKSPACE } from './services/projects.ts'
+import { LocationService, ProjectService, WORKSPACE } from './services/projects.ts'
 import { StudioService } from './services/studio.ts'
 
 export const VERSION = '0.1.0'
@@ -54,7 +54,8 @@ export async function buildApp(
   const signer = loadSigner({ pem: config.SIGNING_KEY_PEM, dataDir, ephemeral: opts.ephemeralKeys })
   const audit = new AuditLog(db)
   const studio = new StudioService(db, audit, signer)
-  const projects = new ProjectService(db, audit)
+  const projects = new ProjectService(db, audit, studio)
+  const locations = new LocationService(db, audit)
 
   const metrics = new Metrics()
   const httpRequests = metrics.counter('studio_http_requests_total', 'HTTP requests by route and status')
@@ -161,8 +162,10 @@ export async function buildApp(
       .send(bytes)
   })
 
-  // ---- workspace & projects (per-project access) ------------------------------------------------
+  // ---- workspace: locations (shared) and projects (one show each, per-project access) -------------
   registerRoute(app, config, 'getWorkspace', async () => WORKSPACE)
+  registerRoute(app, config, 'listLocations', async () => locations.list())
+  registerRoute(app, config, 'createLocation', async ({ body }, ctx) => locations.create(body, actor(ctx)))
   registerRoute(app, config, 'listProjects', async (_input, ctx) => projects.list(actor(ctx)))
   registerRoute(app, config, 'createProject', async ({ body }, ctx) => projects.create(body, actor(ctx)))
   registerRoute(app, config, 'getProject', async ({ params }, ctx) => projects.get(params.projectId, actor(ctx)))
@@ -180,8 +183,11 @@ export async function buildApp(
     studio.listDocuments({ ...query, visible: await projects.visibleProjectIds(actor(ctx)) }),
   )
   registerRoute(app, config, 'createDocument', async ({ body }, ctx) => {
-    await projects.require(actor(ctx), body.projectId, 'edit')
-    return studio.createDocument(body.kind, body.id, body.projectId, body.draft, actor(ctx))
+    if (body.kind === 'environment') {
+      await locations.require(body.locationId)
+      return studio.createDocument(body.kind, body.id, { locationId: body.locationId }, body.draft, actor(ctx))
+    }
+    return studio.createDocument(body.kind, body.id, {}, body.draft, actor(ctx))
   })
   registerRoute(app, config, 'getDocument', async ({ params }, ctx) => {
     await canDoc(ctx, params.id, 'read')
@@ -224,26 +230,13 @@ export async function buildApp(
   })
   registerRoute(app, config, 'provision', async ({ params }) => fleet.provision(params.environmentId))
   registerRoute(app, config, 'signingKey', async () => ({ publicKeyPem: signer.publicKeyPem }))
-  /** Environments the caller may read (null = all). Fleet views only show those. */
-  const readableEnvironments = async (ctx: RequestContext) => {
-    const visible = await projects.visibleProjectIds(actor(ctx))
-    if (!visible) return null
-    return new Set(
-      (await studio.listDocuments({ kind: 'environment', visible })).map((d) => d.id),
-    )
-  }
-  registerRoute(app, config, 'listDevices', async ({ query }, ctx) => {
-    const envs = await readableEnvironments(ctx)
-    return (await fleet.listDevices(query.environmentId)).filter((d) => !envs || envs.has(d.environmentId))
-  })
+  // Locations and their live state are visible to the whole workspace.
+  registerRoute(app, config, 'listDevices', async ({ query }) => fleet.listDevices(query.environmentId))
   registerRoute(app, config, 'environmentStatus', async ({ params }, ctx) => {
     await canDoc(ctx, params.environmentId, 'read')
     return fleet.environmentStatus(params.environmentId)
   })
-  registerRoute(app, config, 'listDeployments', async ({ query }, ctx) => {
-    const envs = await readableEnvironments(ctx)
-    return (await fleet.listDeployments(query.environmentId)).filter((d) => !envs || envs.has(d.environmentId))
-  })
+  registerRoute(app, config, 'listDeployments', async ({ query }) => fleet.listDeployments(query.environmentId))
   registerRoute(app, config, 'createDeployment', async ({ body }, ctx) => {
     await canDoc(ctx, body.showId, 'operate')
     return fleet.deploy(body.showId, body.revision, actor(ctx))

@@ -1,7 +1,9 @@
+import type { Joint } from '@studio/schema'
 import { useQuery } from '@tanstack/react-query'
 import { Bot } from 'lucide-react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
+import { applyPose, buildRig } from '@/components/three/character-model'
 import { assetUrl } from '@/lib/api'
 import { cn } from '@/lib/utils'
 
@@ -13,7 +15,7 @@ import { cn } from '@/lib/utils'
 let renderer: THREE.WebGLRenderer | null = null
 let queue: Promise<unknown> = Promise.resolve()
 
-async function render(url: string, width: number, height: number): Promise<string> {
+async function render(url: string, width: number, height: number, joints: readonly Joint[]): Promise<string> {
   renderer ??= new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true })
   renderer.setPixelRatio(2)
   renderer.setSize(width, height, false)
@@ -28,6 +30,9 @@ async function render(url: string, width: number, height: number): Promise<strin
   const rim = new THREE.DirectionalLight('#5cc8ea', 1.6)
   rim.position.set(-4, 3, -3)
   scene.add(key, rim, gltf.scene)
+  // Show the figure in its home pose, not the rig's rest (often a T-pose).
+  applyPose(buildRig(gltf.scene, joints), undefined)
+  gltf.scene.updateMatrixWorld(true)
 
   const box = new THREE.Box3().setFromObject(gltf.scene)
   const size = box.getSize(new THREE.Vector3())
@@ -48,16 +53,30 @@ async function render(url: string, width: number, height: number): Promise<strin
   return data
 }
 
-export function modelThumbnail(assetId: string, width = 320, height = 220): Promise<string> {
-  const job = queue.then(() => render(assetUrl(assetId), width, height))
+export function modelThumbnail(
+  assetId: string,
+  joints: readonly Joint[] = [],
+  width = 320,
+  height = 220,
+): Promise<string> {
+  const job = queue.then(() => render(assetUrl(assetId), width, height, joints))
   queue = job.catch(() => undefined)
   return job
 }
 
-export function ModelThumb({ assetId, className }: { assetId: string | null | undefined; className?: string }) {
+export function ModelThumb({
+  assetId,
+  joints = [],
+  className,
+}: {
+  assetId: string | null | undefined
+  joints?: readonly Joint[]
+  className?: string
+}) {
+  const homes = joints.map((j) => `${j.name}:${j.node}:${j.home}:${j.axis.join(',')}`).join('|')
   const { data, isError } = useQuery({
-    queryKey: ['model-thumb', assetId],
-    queryFn: () => modelThumbnail(assetId ?? ''),
+    queryKey: ['model-thumb', assetId, homes],
+    queryFn: () => modelThumbnail(assetId ?? '', joints),
     enabled: !!assetId,
     staleTime: Number.POSITIVE_INFINITY,
     gcTime: Number.POSITIVE_INFINITY,

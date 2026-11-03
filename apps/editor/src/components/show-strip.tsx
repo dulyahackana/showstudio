@@ -68,7 +68,15 @@ export function ShowStrip({
         const d = `M 0 ${y0} ${f.activity.map((a, i) => `L ${i + 0.5} ${y0 - Math.sqrt(a) * 8}`).join(' ')} L ${BUCKETS} ${y0} Z`
         return (
           <g key={f.deviceId}>
-            <line x1={0} x2={BUCKETS} y1={y0} y2={y0} className="stroke-motion/20" strokeWidth={0.3} vectorEffect="non-scaling-stroke" />
+            <line
+              x1={0}
+              x2={BUCKETS}
+              y1={y0}
+              y2={y0}
+              className="stroke-motion/20"
+              strokeWidth={0.3}
+              vectorEffect="non-scaling-stroke"
+            />
             <path d={d} className="fill-motion/45 stroke-motion" strokeWidth={0.8} vectorEffect="non-scaling-stroke" />
           </g>
         )
@@ -113,7 +121,15 @@ export function ShowStrip({
       {progress != null && (
         <>
           <rect x={0} y={0} width={progress * BUCKETS} height={H} className="fill-background/45" />
-          <line x1={progress * BUCKETS} x2={progress * BUCKETS} y1={0} y2={H} className="stroke-primary" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+          <line
+            x1={progress * BUCKETS}
+            x2={progress * BUCKETS}
+            y1={0}
+            y2={H}
+            className="stroke-primary"
+            strokeWidth={1.5}
+            vectorEffect="non-scaling-stroke"
+          />
         </>
       )}
     </svg>

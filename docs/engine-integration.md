@@ -12,7 +12,7 @@ bun run e2e:godot                 # fresh studio + Godot: deploy -> launch -> se
 
 Godot is found via `$GODOT`, `godot`/`godot4` on `PATH`, or `/Applications/Godot.app`. Simulator options go after the engine flags: `--api`, `--env`, `--token` (provisioning), `--data` (local show store, default `user://fleet`), `--corrupt <device>` and `--outdated-firmware <device>` (fault injection, same as the Node fleet), `--screenshot out-%d.png --screenshot-delay 5,12`.
 
-Run one fleet per attraction. If the Node fleet and Godot both connect, the newer connection takes over each device id (close code `4005`) and the older one stops reconnecting instead of fighting over it.
+Run one simulator per attraction, as many at once as you like (`bun run sim:godot --env dragons-lair` and `bun run sim:godot --env burrow-hollow` in two terminals): each window is titled with its attraction, keeps its own local show store and show controller, and is launched individually from the operator console. If the Node fleet and Godot both connect, the newer connection takes over each device id (close code `4005`) and the older one stops reconnecting instead of fighting over it.
 
 ## What it does
 
@@ -30,7 +30,7 @@ flowchart LR
 ```
 
 1. **Provision.** `GET /api/v1/fleet/provisioning/{environmentId}` with `x-provisioning-token` returns the device ids, kinds and credentials, the pinned character definitions, the signing public key and the **layout** (the attraction's `EnvironmentDefinition`). One `sim_device.gd` per device, plus one local show controller.
-2. **Build the stage** from the layout: stage boundary, keep-out zones, figures, spot lights (aimed at their targets), speakers, sensor zones and a guest you can walk around. Figure GLBs come from `/api/v1/assets/{assetId}` with a device credential and are checked against their content hash.
+2. **Build the stage** from the layout: stage boundary, keep-out zones (brass stanchions and a rope), figures, spot lights aimed at their targets with volumetric beams, speakers, sensor zones, the scenery (set dressing GLBs, torches get flickering flames) and a guest you can walk around. Lighting is image-based from a CC0 cave HDRI with SSAO/SSIL, glow and AgX tone mapping. Figure GLBs come from `/api/v1/assets/{assetId}` with a device credential and are checked against their content hash.
 3. **Connect.** WebSocket `/api/v1/devices/ws`: `hello`, then `welcome` (clock offset = `serverTime − now`), then `status` every `heartbeatMs`. Reconnects with backoff. Every incoming message is validated against `FleetToDevice` in the published JSON Schema before it is acted on.
 4. **Deploy.** Download the bundle, check `sha256`, verify the RSA-SHA256 signature with the pinned key, validate it against [`contracts/json-schema/ShowBundle.json`](../contracts/json-schema/ShowBundle.json), check that this device's payload exists, is the right kind and pins the definition the controller runs, re-validate motion against the controller's **own** limits, and fetch and verify the audio. Write it atomically, then report `staged`. Any failure is reported as `rejected` with the reason.
 5. **Launch.** Start at `startAt − offset` and sample the runtime every frame from the local copy; the cloud can disappear mid-show. `stop` returns to ready; `estop` latches until `reset`. Audio controllers clamp every cue to their own ceiling.
@@ -54,7 +54,7 @@ flowchart LR
 
 ## Pose application
 
-For each joint: reset the node to its rest transform, then for `revolute` post-multiply the rest rotation by `Quaternion(normalize(axis), radians(v))`; for `prismatic` translate by `restRotation · axis · v`. Joints sharing a node apply in definition order. glTF is Y-up and right-handed, like Godot and three.js, so no conversion is needed. Nodes are found by their glTF name, after Godot's `validate_node_name()`. Godot keeps those names on generated nodes, while `GLTFState.get_scene_node()` is not usable after `generate_scene()`.
+For each joint: reset the node to its rest transform, then for `revolute` post-multiply the rest rotation by `Quaternion(normalize(axis), radians(v))`; for `prismatic` translate by `restRotation · axis · v`. Joints sharing a node apply in definition order. Rigged models expose joints as skeleton bones: the same rotation is applied with `Skeleton3D.set_bone_pose_rotation` on top of the bone's rest pose (three.js rotates the cloned `Bone`; clone with `SkeletonUtils.clone`, since `Object3D.clone` leaves skinned meshes bound to the original skeleton). glTF is Y-up and right-handed, like Godot and three.js, so no conversion is needed. Nodes are found by their glTF name, after Godot's `validate_node_name()`. Godot keeps those names on generated nodes, while `GLTFState.get_scene_node()` is not usable after `generate_scene()`.
 
 ## Runtime (must match `packages/playback/src/runtime.ts`)
 

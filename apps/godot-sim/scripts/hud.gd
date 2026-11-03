@@ -4,13 +4,13 @@ extends CanvasLayer
 
 const STATE_COLORS := {
 	"idle": "#8b95a7",
-	"ready": "#4cd6a2",
-	"armed": "#f5b443",
+	"ready": "#34d399",
+	"armed": "#f7d24f",
 	"running": "#5cc8ea",
 	"estopped": "#f0554b",
 	"faulted": "#f0554b",
 }
-const LINK_COLORS := {"online": "#4cd6a2", "connecting": "#f5b443", "offline": "#8b95a7", "replaced": "#f0554b"}
+const LINK_COLORS := {"online": "#34d399", "connecting": "#f7d24f", "offline": "#8b95a7", "replaced": "#f0554b"}
 const KIND_GLYPH := {"doll": "◆", "light": "✦", "audio": "♪", "sensor": "◎"}
 
 var _main: Node
@@ -127,9 +127,9 @@ func _render() -> String:
 	var lead = devices.filter(func(d): return not d.active.is_empty())
 	var out := PackedStringArray()
 	var chevron := "▾" if _expanded else "▸"
-	var dot := "#4cd6a2" if online == devices.size() and devices.size() > 0 else "#f5b443"
+	var dot := "#34d399" if online == devices.size() and devices.size() > 0 else "#f7d24f"
 	out.append(
-		"[color=#f5a524]%s[/color] [b]%s[/b]  [color=%s]●[/color] [color=#aab4c5]%d/%d online[/color]"
+		"[color=#34d399]%s[/color] [b]%s[/b]  [color=%s]●[/color] [color=#aab4c5]%d/%d online[/color]"
 		% [chevron, cfg["env"], dot, online, devices.size()]
 	)
 	if _error != "":
@@ -149,7 +149,7 @@ func _render() -> String:
 		out.append("[color=#5cc8ea]%s[/color]" % bar)
 		var started: Array = _main.bus.started_behaviors()
 		if not started.is_empty():
-			out.append("[color=#4cd6a2]◎ %s[/color]" % ", ".join(started.map(func(s): return s["id"])))
+			out.append("[color=#f472b6]◎ %s[/color]" % ", ".join(started.map(func(s): return s["id"])))
 	if _expanded:
 		out.append("")
 		for d in devices:

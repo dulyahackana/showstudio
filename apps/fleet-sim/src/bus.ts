@@ -15,7 +15,13 @@ export interface BusEvents {
   behaviorStart: [{ sha256: string; id: string; startAt: number }]
 }
 
-export class LocalBus extends EventEmitter<BusEvents> {}
+export class LocalBus extends EventEmitter<BusEvents> {
+  constructor() {
+    super()
+    // One listener per device; attractions routinely have more than Node's default of 10.
+    this.setMaxListeners(0)
+  }
+}
 
 /**
  * Local show controller: the single arbiter of sensor -> behavior decisions for

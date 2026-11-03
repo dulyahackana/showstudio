@@ -10,7 +10,7 @@ import { queryOptions, useQueries, useQuery } from '@tanstack/react-query'
 import { api } from './api'
 
 export const qk = {
-  docs: (kind?: DocKind, projectId?: string) => ['docs', kind ?? 'all', projectId ?? 'any'] as const,
+  docs: (kind?: DocKind, locationId?: string) => ['docs', kind ?? 'all', locationId ?? 'any'] as const,
   doc: (id: string) => ['doc', id] as const,
   revisions: (id: string) => ['revisions', id] as const,
   revision: (id: string, revision: number) => ['revision', id, revision] as const,
@@ -21,12 +21,12 @@ export const qk = {
   audit: ['audit'] as const,
 }
 
-/** Documents you can read, optionally of one kind and/or one project. */
-export const docsQuery = (kind?: DocKind, projectId?: string) =>
+/** Documents you can read, optionally of one kind and/or at one location. */
+export const docsQuery = (kind?: DocKind, locationId?: string) =>
   queryOptions({
-    queryKey: qk.docs(kind, projectId),
+    queryKey: qk.docs(kind, locationId),
     queryFn: () =>
-      api('listDocuments', { query: { ...(kind ? { kind } : {}), ...(projectId ? { projectId } : {}) } }),
+      api('listDocuments', { query: { ...(kind ? { kind } : {}), ...(locationId ? { locationId } : {}) } }),
   })
 
 export const docQuery = (id: string) =>

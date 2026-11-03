@@ -1,6 +1,7 @@
 import * as React from "react"
 import { type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
+import { useEditable } from "@/components/editable"
 import { ToggleGroup as ToggleGroupPrimitive } from "radix-ui"
 
 import { toggleVariants } from "@/components/ui/toggle"
@@ -24,14 +25,17 @@ function ToggleGroup({
   spacing = 2,
   orientation = "horizontal",
   children,
+  disabled,
   ...props
 }: React.ComponentProps<typeof ToggleGroupPrimitive.Root> &
   VariantProps<typeof toggleVariants> & {
     spacing?: number
     orientation?: "horizontal" | "vertical"
   }) {
+  const ro = disabled === undefined && !useEditable()
   return (
     <ToggleGroupPrimitive.Root
+      disabled={disabled ?? ro}
       data-slot="toggle-group"
       data-variant={variant}
       data-size={size}

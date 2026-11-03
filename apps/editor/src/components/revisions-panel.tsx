@@ -2,18 +2,16 @@ import { diffShows } from '@studio/playback'
 import type { RevisionSummary } from '@studio/schema'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { ColumnDef } from '@tanstack/react-table'
-import { GitCompare, Rocket, ShieldCheck, ShieldX } from 'lucide-react'
+import { GitCompare, ShieldCheck, ShieldX } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { DataTable } from '@/components/data-table'
 import { RevisionBadge } from '@/components/status'
 import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { api, problemMessage } from '@/lib/api'
 import { shortSha, timeAgo } from '@/lib/format'
-import { qk, revisionQuery, revisionsQuery } from '@/lib/queries'
 import { useDocPermission } from '@/lib/project'
-import { docQuery } from '@/lib/queries'
+import { docQuery, qk, revisionQuery, revisionsQuery } from '@/lib/queries'
 import { canCall, useUser } from '@/lib/session'
 
 function DiffView({ docId, revision }: { docId: string; revision: number }) {
@@ -28,11 +26,7 @@ function DiffView({ docId, revision }: { docId: string; revision: number }) {
     <ul className="space-y-0.5 text-xs">
       {entries.map((e, i) => (
         <li key={`${e.target}-${i}`} className="font-mono">
-          <span
-            className={
-              e.change === 'added' ? 'text-sensor' : e.change === 'removed' ? 'text-danger' : 'text-warn'
-            }
-          >
+          <span className={e.change === 'added' ? 'text-ok' : e.change === 'removed' ? 'text-danger' : 'text-warn'}>
             {e.change === 'added' ? '+' : e.change === 'removed' ? '−' : '~'}
           </span>{' '}
           {e.area}: {e.target} {e.detail && <span className="text-muted-foreground">({e.detail})</span>}
@@ -42,14 +36,13 @@ function DiffView({ docId, revision }: { docId: string; revision: number }) {
   )
 }
 
-/** Revision history with safety review (four-eyes) and one-click deploy. */
+/** Revision history with safety review (four-eyes). */
 export function RevisionsPanel({ docId, kind }: { docId: string; kind: 'character' | 'environment' | 'show' }) {
   const qc = useQueryClient()
   const user = useUser()
   const { data: revisions = [] } = useQuery(revisionsQuery(docId))
   const { data: doc } = useQuery(docQuery(docId))
   const projectReview = useDocPermission(doc?.projectId, 'review')
-  const projectOperate = useDocPermission(doc?.projectId, 'operate')
   const [diffOf, setDiffOf] = useState<number | null>(null)
 
   const review = useMutation({
@@ -66,17 +59,10 @@ export function RevisionsPanel({ docId, kind }: { docId: string; kind: 'characte
       )
       void qc.invalidateQueries({ queryKey: qk.revisions(docId) })
       void qc.invalidateQueries({ queryKey: ['docs'] })
+      void qc.invalidateQueries({ queryKey: ['projects'] })
+      void qc.invalidateQueries({ queryKey: ['project'] })
     },
     onError: (err) => toast.error(problemMessage(err).title, { description: problemMessage(err).detail }),
-  })
-
-  const deploy = useMutation({
-    mutationFn: (revision: number) => api('createDeployment', { body: { showId: docId, revision } }),
-    onSuccess: (d) => toast.success(`Deploying ${d.name} r${d.revision} to ${d.targets.length} devices`),
-    onError: (err) => {
-      const p = problemMessage(err)
-      toast.error(p.title, { description: [p.detail, ...(p.reasons ?? [])].filter(Boolean).join(' · ') })
-    },
   })
 
   const columns: ColumnDef<RevisionSummary>[] = [
@@ -124,7 +110,7 @@ export function RevisionsPanel({ docId, kind }: { docId: string; kind: 'characte
             cell: ({ row }) => (
               <span className="font-mono text-xs">
                 {shortSha(row.original.bundleSha256)}{' '}
-                {row.original.signed && <ShieldCheck className="inline size-3 text-sensor" />}
+                {row.original.signed && <ShieldCheck className="inline size-3 text-ok" />}
               </span>
             ),
           } satisfies ColumnDef<RevisionSummary>,
@@ -142,8 +128,8 @@ export function RevisionsPanel({ docId, kind }: { docId: string; kind: 'characte
       cell: ({ row }) => {
         const r = row.original
         if (kind !== 'show') return null
-        const isAuthor = user?.name === r.publishedBy
-        const canReview = canCall(user, 'approveRevision') && projectReview && !isAuthor
+        // Four-eyes: authors never see review actions on their own revisions.
+        const canReview = canCall(user, 'approveRevision') && projectReview && user?.name !== r.publishedBy
         return (
           <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={() => {}}>
             <Button
@@ -154,29 +140,16 @@ export function RevisionsPanel({ docId, kind }: { docId: string; kind: 'characte
             >
               <GitCompare />
             </Button>
-            {r.status === 'published' && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      disabled={!canReview || review.isPending}
-                      onClick={() => review.mutate({ revision: r.revision, decision: 'approve' })}
-                      data-testid={`approve-r${r.revision}`}
-                    >
-                      <ShieldCheck /> Approve
-                    </Button>
-                  </span>
-                </TooltipTrigger>
-                {!canReview && (
-                  <TooltipContent>
-                    {isAuthor
-                      ? 'Four-eyes rule: authors cannot review their own work'
-                      : 'Requires the safety role and reviewer access to this project'}
-                  </TooltipContent>
-                )}
-              </Tooltip>
+            {r.status === 'published' && canReview && (
+              <Button
+                size="xs"
+                variant="outline"
+                disabled={review.isPending}
+                onClick={() => review.mutate({ revision: r.revision, decision: 'approve' })}
+                data-testid={`approve-r${r.revision}`}
+              >
+                <ShieldCheck /> Approve
+              </Button>
             )}
             {r.status === 'published' && canReview && (
               <Button
@@ -186,17 +159,6 @@ export function RevisionsPanel({ docId, kind }: { docId: string; kind: 'characte
                 onClick={() => review.mutate({ revision: r.revision, decision: 'reject' })}
               >
                 <ShieldX />
-              </Button>
-            )}
-            {r.status === 'approved' && (
-              <Button
-                size="xs"
-                variant="outline"
-                disabled={!canCall(user, 'createDeployment') || !projectOperate || deploy.isPending}
-                onClick={() => deploy.mutate(r.revision)}
-                data-testid={`deploy-r${r.revision}`}
-              >
-                <Rocket /> Deploy
               </Button>
             )}
           </div>

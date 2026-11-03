@@ -38,7 +38,7 @@ services:
     depends_on: { seed: { condition: service_completed_successfully } }
     environment:
       STUDIO_API_URL: http://studio:4000
-      STUDIO_ENVIRONMENT: dragons-lair
+      STUDIO_ENVIRONMENT: dragons-lair,burrow-hollow
       PROVISIONING_TOKEN: demo-only-provisioning-token
       FLEET_DATA_DIR: /tmp/fleet
     command: ["bun", "apps/fleet-sim/src/main.ts", "--quiet"]

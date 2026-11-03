@@ -12,8 +12,8 @@ import {
 import { useSelector } from '@tanstack/react-store'
 import type { Draft } from 'immer'
 import { Bot, Keyboard, Plus, Trash } from 'lucide-react'
+import { EditButton, useEditable } from '@/components/editable'
 import { ColorInput, NumberInput, Row } from '@/components/fields'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Kbd } from '@/components/ui/kbd'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -65,6 +65,7 @@ export function Inspector({
   onFocus?: (deviceId: string) => void
   palette: EnvironmentDefinition['palette']
 }) {
+  const editable = useEditable()
   // Re-render with the playhead (coarsely while playing) so pose sliders follow the show.
   const t = useSelector(playback.store, (s) => (s.playing ? Math.round(s.t / 100) * 100 : s.t))
   const at = Math.round(t / 10) * 10
@@ -95,7 +96,9 @@ export function Inspector({
     <ScrollArea className="h-full bg-surface/40">
       <div className="flex h-11 items-center justify-between border-b px-4">
         <span className="text-eyebrow">Inspector</span>
-        <span className="rounded border bg-sidebar px-2 py-0.5 font-mono text-xs text-primary tabular">{formatMs(at)}</span>
+        <span className="rounded border bg-sidebar px-2 py-0.5 font-mono text-xs text-primary tabular">
+          {formatMs(at)}
+        </span>
       </div>
       <div className="space-y-4 p-3 text-xs" data-testid="inspector">
         {placement && character && (
@@ -164,9 +167,9 @@ export function Inspector({
                 {row.kind === 'audio' ? 'Audio cue' : 'Key'}{' '}
                 {selection?.index !== null && `#${(selection?.index ?? 0) + 1}`}
               </h3>
-              <Button size="icon-xs" variant="ghost" onClick={deleteKey} aria-label="Delete key">
+              <EditButton size="icon-xs" variant="ghost" onClick={deleteKey} aria-label="Delete key">
                 <Trash />
-              </Button>
+              </EditButton>
             </div>
             <Row label="Time (ms)">
               <NumberInput
@@ -205,7 +208,7 @@ export function Inspector({
                 <Row label="Color">
                   <ColorInput value={key.color} onChange={(color) => patchKey({ color }, `c:${selection?.index}`)} />
                 </Row>
-                {palette.length > 0 && (
+                {editable && palette.length > 0 && (
                   <div className="flex flex-wrap gap-1 pl-[118px]">
                     {palette.map((p) => (
                       <button
@@ -279,7 +282,7 @@ export function Inspector({
         )}
 
         {row && !key && row.kind !== 'motion' && (
-          <Button
+          <EditButton
             size="sm"
             variant="outline"
             className="w-full"
@@ -300,7 +303,7 @@ export function Inspector({
             disabled={row.kind === 'audio'}
           >
             <Plus /> {row.kind === 'audio' ? 'Double-click the lane to add a cue' : 'Add light key at playhead'}
-          </Button>
+          </EditButton>
         )}
 
         {!selection && !placement && (
@@ -325,7 +328,7 @@ export function Inspector({
                         {p.deviceId} · {c?.joints.length ?? 0} joints
                       </span>
                     </span>
-                    <span className="text-muted-foreground">Pose →</span>
+                    <span className="text-muted-foreground">{editable ? 'Pose →' : 'Inspect →'}</span>
                   </button>
                 )
               })}

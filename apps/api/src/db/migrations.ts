@@ -156,4 +156,47 @@ export const migrations: { version: number; name: string; sql: string }[] = [
       create index documents_project on documents (project_id);
     `,
   },
+  {
+    version: 3,
+    name: 'projects are shows; locations',
+    sql: /* sql */ `
+      -- A project is one show: same id, and the show carries its name and description.
+      -- Every existing show becomes its own project with the members of the project it was in.
+      insert into projects (id, name, description, created_at, created_by)
+        select d.id, d.name, '', d.created_at, d.created_by from documents d
+        where d.kind = 'show' and not exists (select 1 from projects p where p.id = d.id);
+      insert into project_members (project_id, user_name, role, added_by, added_at)
+        select d.id, m.user_name, m.role, m.added_by, m.added_at
+        from documents d join project_members m on m.project_id = d.project_id
+        where d.kind = 'show' and d.project_id <> d.id
+        on conflict do nothing;
+
+      -- Characters (the library) and environments (locations) are shared with the workspace.
+      alter table documents alter column project_id drop default;
+      alter table documents alter column project_id drop not null;
+      update documents set project_id = case when kind = 'show' then id else null end;
+      delete from project_members where project_id not in (select id from documents where kind = 'show');
+      delete from projects where id not in (select id from documents where kind = 'show');
+      alter table projects drop column name, drop column description;
+
+      create table locations (
+        id          text primary key,
+        name        text not null,
+        region      text not null default '',
+        description text not null default '',
+        created_at  timestamptz not null default now(),
+        created_by  text not null
+      );
+      alter table documents add column location_id text references locations(id);
+      insert into locations (id, name, description, created_by)
+        select 'unassigned', 'Unassigned', 'Environments created before locations existed', 'system'
+        where exists (select 1 from documents where kind = 'environment');
+      update documents set location_id = 'unassigned' where kind = 'environment';
+      create index documents_location on documents (location_id);
+
+      alter table documents add constraint documents_scope check (
+        (kind = 'show') = (project_id is not null) and (kind = 'environment') = (location_id is not null)
+      );
+    `,
+  },
 ]

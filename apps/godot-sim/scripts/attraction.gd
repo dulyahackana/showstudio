@@ -11,12 +11,14 @@ const Net := preload("res://scripts/net.gd")
 const OrbitCamera := preload("res://scripts/orbit_camera.gd")
 
 const STAGE_COLOR := Color("#38bdf8")
-const KEEP_OUT_COLOR := Color("#e0a33a")
-const SENSOR_COLOR := Color("#22c55e")
+const KEEP_OUT_COLOR := Color("#cbd5e1")
+const SENSOR_COLOR := Color("#f472b6")
 const GUEST_SPEED := 2.5
+const GUEST_MODEL := "res://models/guest.glb"
 
 var figures := {}
 var guest: Node3D
+var _guest_anim: AnimationPlayer
 var camera: OrbitCamera
 
 var _layout := {}
@@ -48,6 +50,13 @@ func build(layout: Dictionary, characters: Dictionary) -> void:
 		_speaker(a)
 	for s in layout["sensors"]:
 		_sensor(s)
+	var scenery: Array = layout.get("scenery", [])
+	for item in scenery:
+		_scenery_item(item)
+	# Fallback atmosphere when the layout has no torch props of its own.
+	if not scenery.any(func(i): return String(i["name"]).containsn("torch")):
+		_torch(Vector3(stage_min.x + 0.35, _floor_y, stage_min.z + 0.35))
+		_torch(Vector3(stage_max.x - 0.35, _floor_y, stage_min.z + 0.35))
 	# Start the guest in front of the stage, outside every sensor zone.
 	var start := Vector3((stage_min.x + stage_max.x) / 2.0, _floor_y, stage_max.z + 1.5)
 	while _sensors.values().any(func(z): return Vector2(start.x - z["position"].x, start.z - z["position"].z).length() <= z["range"] + 0.5):
@@ -88,6 +97,19 @@ func load_models(api_url: String, headers: PackedStringArray) -> void:
 		var err: String = figure.load_glb(cache[asset_id])
 		if err != "":
 			log_line.emit("[stage] %s: %s" % [device_id, err])
+	for item in _scenery:
+		var asset_id: String = item["asset"]
+		if not cache.has(asset_id):
+			var res: Dictionary = await Net.get_bytes(self, "%s/api/v1/assets/%s" % [api_url, asset_id], headers)
+			if not res["ok"] or Net.sha256_hex(res["body"]) != asset_id:
+				continue
+			cache[asset_id] = res["body"]
+		var doc := GLTFDocument.new()
+		var state := GLTFState.new()
+		if doc.append_from_buffer(cache[asset_id], "", state) == OK:
+			var scene := doc.generate_scene(state)
+			if scene != null:
+				item["root"].add_child(scene)
 
 
 ## Mirror what each controller is outputting right now.
@@ -116,7 +138,8 @@ func _process(delta: float) -> void:
 		var k: float = torch["seed"] + now
 		var flicker := 0.82 + 0.12 * sin(k * 9.1) + 0.07 * sin(k * 23.7) + 0.05 * sin(k * 3.3)
 		torch["light"].light_energy = 2.2 * flicker
-		torch["flame"].scale = Vector3.ONE * (0.9 + 0.15 * flicker)
+		if torch["flame"] != null:
+			torch["flame"].scale = Vector3.ONE * (0.9 + 0.15 * flicker)
 	for sensor_id in _sensors:
 		var s: Dictionary = _sensors[sensor_id]
 		s["flash"] = maxf(0.0, s["flash"] - delta)
@@ -134,8 +157,16 @@ func _move_guest(delta: float) -> void:
 		float(Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP))
 		- float(Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN))
 	)
-	if input != Vector2.ZERO:
-		guest.position += camera.planar_basis() * Vector3(input.x, 0.0, -input.y).normalized() * GUEST_SPEED * delta
+	var moving := input != Vector2.ZERO
+	if moving:
+		var direction := camera.planar_basis() * Vector3(input.x, 0.0, -input.y).normalized()
+		guest.position += direction * GUEST_SPEED * delta
+		# The model faces +Z: turn smoothly towards where the guest is walking.
+		guest.rotation.y = lerp_angle(guest.rotation.y, atan2(direction.x, direction.z), minf(1.0, delta * 12.0))
+	if _guest_anim != null:
+		var clip := "Walking_A" if moving else "Idle"
+		if _guest_anim.current_animation != clip:
+			_guest_anim.play(clip, 0.2)
 	# Presence/proximity sensors see the guest enter and leave their range.
 	for sensor_id in _sensors:
 		var s: Dictionary = _sensors[sensor_id]
@@ -166,7 +197,7 @@ func _environment() -> void:
 	env.ambient_light_color = Color(_layout["ambient"]["color"]).lerp(Color("#3a4a78"), 0.5)
 	env.ambient_light_energy = 0.25 + float(_layout["ambient"]["intensity"]) * 0.6
 	env.tonemap_mode = Environment.TONE_MAPPER_AGX
-	env.tonemap_exposure = 1.1
+	env.tonemap_exposure = 1.35
 	# Light shafts: spot lights scatter in a thin haze, like a real dark ride.
 	env.volumetric_fog_enabled = true
 	env.volumetric_fog_density = 0.035
@@ -187,6 +218,18 @@ func _environment() -> void:
 	env.adjustment_enabled = true
 	env.adjustment_contrast = 1.06
 	env.adjustment_saturation = 1.12
+	# Image-based light from a CC0 cave HDRI (Poly Haven); the background stays dark.
+	var hdri := Image.load_from_file(ProjectSettings.globalize_path("res://hdri/drachenfels_cellar_1k.hdr"))
+	if hdri != null and not hdri.is_empty():
+		var panorama := PanoramaSkyMaterial.new()
+		panorama.panorama = ImageTexture.create_from_image(hdri)
+		panorama.energy_multiplier = 1.0
+		var sky := Sky.new()
+		sky.sky_material = panorama
+		env.sky = sky
+		env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+		env.ambient_light_sky_contribution = 0.7
+		env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
 	var world := WorldEnvironment.new()
 	world.environment = env
 	add_child(world)
@@ -233,12 +276,75 @@ func _floor(a: Vector3, b: Vector3) -> void:
 	floor_mesh.material_override = material
 	floor_mesh.position = Vector3((a.x + b.x) / 2.0, a.y, (a.z + b.z) / 2.0)
 	add_child(floor_mesh)
-	# Torches at the back corners: warm, flickering, with embers.
-	_torch(Vector3(a.x + 0.35, a.y, a.z + 0.35))
-	_torch(Vector3(b.x - 0.35, a.y, a.z + 0.35))
 
 
 var _torches: Array = []
+
+
+## Static set dressing from the layout; models load with the figures.
+var _scenery: Array = []
+
+
+func _scenery_item(item: Dictionary) -> void:
+	var root := Node3D.new()
+	root.name = "scenery_" + String(item["id"])
+	root.position = _vec(item["position"])
+	root.rotation.y = deg_to_rad(float(item["rotationY"]))
+	root.scale = Vector3.ONE * float(item.get("scale", 1.0))
+	add_child(root)
+	_scenery.append({"root": root, "asset": item["model"]["assetId"]})
+	if String(item["name"]).containsn("torch"):
+		_flame(root.position + Vector3(0, 1.05 * root.scale.y, 0), root.scale.y)
+
+
+## Flickering flame light with embers (also used by the stand-alone torches).
+func _flame(at: Vector3, size := 1.0) -> void:
+	var light := OmniLight3D.new()
+	light.position = at
+	light.light_color = Color("#ff9a45")
+	light.light_energy = 2.2
+	light.omni_range = 7.0 * size
+	light.shadow_enabled = true
+	light.light_volumetric_fog_energy = 0.0
+	add_child(light)
+	var embers := _embers()
+	embers.position = at
+	add_child(embers)
+	_torches.append({"light": light, "flame": null, "seed": randf() * 100.0})
+
+
+func _embers() -> GPUParticles3D:
+	var embers := GPUParticles3D.new()
+	embers.amount = 28
+	embers.lifetime = 1.8
+	var process := ParticleProcessMaterial.new()
+	process.direction = Vector3.UP
+	process.spread = 25.0
+	process.initial_velocity_min = 0.25
+	process.initial_velocity_max = 0.7
+	process.gravity = Vector3(0, 0.15, 0)
+	process.scale_min = 0.6
+	process.scale_max = 1.2
+	var fade := Gradient.new()
+	fade.set_color(0, Color(1.0, 0.65, 0.25, 1.0))
+	fade.set_color(1, Color(1.0, 0.3, 0.05, 0.0))
+	var fade_texture := GradientTexture1D.new()
+	fade_texture.gradient = fade
+	process.color_ramp = fade_texture
+	embers.process_material = process
+	var spark := QuadMesh.new()
+	spark.size = Vector2(0.035, 0.035)
+	var spark_material := StandardMaterial3D.new()
+	spark_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	spark_material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
+	spark_material.vertex_color_use_as_albedo = true
+	spark_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	spark_material.emission_enabled = true
+	spark_material.emission = Color("#ff9a45")
+	spark_material.emission_energy_multiplier = 3.0
+	spark.material = spark_material
+	embers.draw_pass_1 = spark
+	return embers
 
 
 func _torch(at: Vector3) -> void:
@@ -284,39 +390,10 @@ func _torch(at: Vector3) -> void:
 	light.light_energy = 2.2
 	light.omni_range = 7.0
 	light.shadow_enabled = true
-	light.light_volumetric_fog_energy = 0.6
+	light.light_volumetric_fog_energy = 0.0
 	root.add_child(light)
-	var embers := GPUParticles3D.new()
+	var embers := _embers()
 	embers.position.y = 1.95
-	embers.amount = 28
-	embers.lifetime = 1.8
-	var process := ParticleProcessMaterial.new()
-	process.direction = Vector3.UP
-	process.spread = 25.0
-	process.initial_velocity_min = 0.25
-	process.initial_velocity_max = 0.7
-	process.gravity = Vector3(0, 0.15, 0)
-	process.scale_min = 0.02
-	process.scale_max = 0.05
-	var fade := Gradient.new()
-	fade.set_color(0, Color(1.0, 0.65, 0.25, 1.0))
-	fade.set_color(1, Color(1.0, 0.3, 0.05, 0.0))
-	var fade_texture := GradientTexture1D.new()
-	fade_texture.gradient = fade
-	process.color_ramp = fade_texture
-	embers.process_material = process
-	var spark := QuadMesh.new()
-	spark.size = Vector2(1, 1)
-	var spark_material := StandardMaterial3D.new()
-	spark_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	spark_material.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	spark_material.vertex_color_use_as_albedo = true
-	spark_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	spark_material.emission_enabled = true
-	spark_material.emission = Color("#ff9a45")
-	spark_material.emission_energy_multiplier = 3.0
-	spark.material = spark_material
-	embers.draw_pass_1 = spark
 	root.add_child(embers)
 	_torches.append({"light": light, "flame": flame, "seed": randf() * 100.0})
 
@@ -329,12 +406,12 @@ func _keep_out(zone: Dictionary) -> void:
 	for y in 64:
 		for x in 64:
 			var on := ((x + y) % 32) < 10
-			stripes.set_pixel(x, y, Color(0.96, 0.65, 0.14, 0.55) if on else Color(0, 0, 0, 0))
+			stripes.set_pixel(x, y, Color(0.9, 0.93, 0.97, 0.5) if on else Color(0, 0, 0, 0))
 	var floor_material := StandardMaterial3D.new()
 	floor_material.albedo_texture = ImageTexture.create_from_image(stripes)
 	floor_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	floor_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	floor_material.albedo_color = Color(1, 1, 1, 0.22)
+	floor_material.albedo_color = Color(1, 1, 1, 0.12)
 	floor_material.uv1_scale = Vector3((b.x - a.x) / 0.8, (b.z - a.z) / 0.8, 1)
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(b.x - a.x, b.z - a.z)
@@ -394,7 +471,7 @@ func _keep_out(zone: Dictionary) -> void:
 		segment.position = p + d / 2.0 + Vector3(0, 0.76, 0)
 		segment.rotation = Vector3(0, -atan2(d.z, d.x), PI / 2.0)
 		add_child(segment)
-	add_child(_label(zone["name"], Vector3((a.x + b.x) / 2.0, a.y + 1.2, (a.z + b.z) / 2.0), Color("#f5b443")))
+	add_child(_label(zone["name"], Vector3((a.x + b.x) / 2.0, a.y + 1.2, (a.z + b.z) / 2.0), KEEP_OUT_COLOR))
 
 
 static func _metal(color: Color, metallic: float, roughness: float) -> StandardMaterial3D:
@@ -441,6 +518,8 @@ func _fixture(l: Dictionary) -> void:
 	can.mesh = can_mesh
 	can.rotation.x = -PI / 2.0
 	can.material_override = _metal(Color("#1b2230"), 0.7, 0.35)
+	# The housing must not shadow its own beam (the light sits inside it).
+	can.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	head.add_child(can)
 	var lens_material := StandardMaterial3D.new()
 	lens_material.albedo_color = Color("#111111")
@@ -455,9 +534,10 @@ func _fixture(l: Dictionary) -> void:
 	lens.rotation.x = -PI / 2.0
 	lens.position.z = -0.145
 	lens.material_override = lens_material
+	lens.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	head.add_child(lens)
 	var spot := SpotLight3D.new()
-	spot.transform = aim
+	spot.transform = aim.translated_local(Vector3(0.0, 0.0, -0.16))  # just in front of the lens
 	spot.spot_angle = rad_to_deg(0.42)
 	spot.spot_angle_attenuation = 0.9
 	spot.spot_range = 22.0
@@ -587,18 +667,49 @@ func _guest(at: Vector3) -> void:
 	guest = Node3D.new()
 	guest.name = "Guest"
 	guest.position = at
-	var capsule := CapsuleMesh.new()
-	capsule.radius = 0.22
-	capsule.height = 1.7
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color("#facc15")
-	var mesh := MeshInstance3D.new()
-	mesh.mesh = capsule
-	mesh.material_override = material
-	mesh.position.y = 0.85
-	guest.add_child(mesh)
-	guest.add_child(_label("guest", Vector3(0.0, 2.0, 0.0), Color("#facc15")))
+	guest.rotation.y = PI  # face the attraction
+	var model := _guest_model()
+	if model != null:
+		guest.add_child(model)
+	else:
+		var capsule := CapsuleMesh.new()
+		capsule.radius = 0.22
+		capsule.height = 1.7
+		var material := StandardMaterial3D.new()
+		material.albedo_color = Color("#facc15")
+		var mesh := MeshInstance3D.new()
+		mesh.mesh = capsule
+		mesh.material_override = material
+		mesh.position.y = 0.85
+		guest.add_child(mesh)
+	guest.add_child(_label("guest", Vector3(0.0, 2.05, 0.0), Color("#facc15")))
+	# A soft follow light so the visitor reads on the dark walkway (not part of the show).
+	var lamp := OmniLight3D.new()
+	lamp.position = Vector3(0.0, 2.4, 1.2)
+	lamp.light_color = Color("#ffe2b8")
+	lamp.light_energy = 0.9
+	lamp.omni_range = 3.2
+	lamp.light_volumetric_fog_energy = 0.0
+	guest.add_child(lamp)
 	add_child(guest)
+
+
+## A CC0 KayKit visitor with idle and walk cycles (samples/ASSETS.md); a capsule if the file is missing.
+func _guest_model() -> Node3D:
+	var bytes := FileAccess.get_file_as_bytes(ProjectSettings.globalize_path(GUEST_MODEL))
+	var doc := GLTFDocument.new()
+	var state := GLTFState.new()
+	if bytes.is_empty() or doc.append_from_buffer(bytes, "", state) != OK:
+		return null
+	var model := doc.generate_scene(state) as Node3D
+	var players := model.find_children("*", "AnimationPlayer", true, false)
+	if not players.is_empty():
+		_guest_anim = players[0]
+		for clip in ["Idle", "Walking_A"]:
+			if _guest_anim.has_animation(clip):
+				_guest_anim.get_animation(clip).loop_mode = Animation.LOOP_LINEAR
+		_guest_anim.play("Idle")
+	return model
 
 
 # ---- helpers --------------------------------------------------------------------------

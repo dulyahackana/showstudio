@@ -35,7 +35,10 @@ import {
 } from './api.ts'
 import { Id, type Role, Sha256 } from './common.ts'
 import {
+  CreateLocationRequest,
   CreateProjectRequest,
+  Location,
+  LocationList,
   MemberParams,
   Project,
   ProjectList,
@@ -128,10 +131,29 @@ export const contract = {
     auth: 'user',
     response: Workspace,
   },
+  listLocations: {
+    method: 'GET',
+    path: '/locations',
+    summary: 'Every location (park, studio, lab); their environments are documents with that locationId',
+    tag: 'workspace',
+    auth: 'user',
+    response: LocationList,
+  },
+  createLocation: {
+    method: 'POST',
+    path: '/locations',
+    summary: 'Register a location (admins)',
+    tag: 'workspace',
+    auth: 'user',
+    roles: ['admin'],
+    body: CreateLocationRequest,
+    response: Location,
+    status: 201,
+  },
   listProjects: {
     method: 'GET',
     path: '/projects',
-    summary: 'Projects you are a member of (admins see all), with members and your role',
+    summary: 'Projects (one show each) you are a member of (admins see all), with members and your role',
     tag: 'workspace',
     auth: 'user',
     response: ProjectList,
@@ -139,7 +161,7 @@ export const contract = {
   createProject: {
     method: 'POST',
     path: '/projects',
-    summary: 'Create a project; the creator becomes its owner',
+    summary: 'Create a project and its show in one step; the creator becomes its owner',
     tag: 'workspace',
     auth: 'user',
     roles: ['engineer'],
@@ -178,10 +200,10 @@ export const contract = {
   listDocuments: {
     method: 'GET',
     path: '/docs',
-    summary: 'List characters, environments and shows',
+    summary: 'List characters (library), environments (locations) and the shows of your projects',
     tag: 'documents',
     auth: 'user',
-    query: z.object({ kind: DocKind.optional(), projectId: Id.optional() }),
+    query: z.object({ kind: DocKind.optional(), locationId: Id.optional() }),
     response: DocumentList,
   },
   createDocument: {

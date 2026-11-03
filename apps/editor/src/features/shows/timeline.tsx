@@ -14,6 +14,7 @@ import { useSelector } from '@tanstack/react-store'
 import type { Draft } from 'immer'
 import { Bot, ChevronDown, ChevronRight, Lightbulb, Radar, Volume2 } from 'lucide-react'
 import { memo, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { useEditable } from '@/components/editable'
 import { formatMs } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { Playback } from './playback'
@@ -133,7 +134,8 @@ const Diamond = ({
     height={9}
     transform={`rotate(45 ${x} ${y})`}
     className={cn(
-      'cursor-grab stroke-background',
+      'stroke-background',
+      useEditable() ? 'cursor-grab' : 'cursor-pointer',
       bad ? 'fill-danger' : selected ? 'fill-primary' : 'fill-motion',
       selected && 'stroke-primary',
     )}
@@ -273,7 +275,7 @@ const AudioLane = memo(function AudioLane({
         const x = (c.t / 1000) * pxPerSecond
         const w = Math.max(10, ((durations[c.assetId] ?? 2000) / 1000) * pxPerSecond)
         return (
-          <g key={c.id} onPointerDown={(e) => onKeyDown(e, i)} className="cursor-grab" data-testid="cue">
+          <g key={c.id} onPointerDown={(e) => onKeyDown(e, i)} className="cursor-pointer" data-testid="cue">
             <rect
               x={x}
               y={4}
@@ -361,13 +363,22 @@ function ResponsesLane({
         <span>Sensor responses</span>
       </div>
       <svg width={width} height={height} className="block">
+        <title>Sensor response windows and preview runs</title>
         {behaviors.map((b, i) => {
           const y = 4 + i * RESPONSE_H
           const from = b.window?.fromMs ?? 0
           const to = b.window?.toMs ?? durationMs
           return (
             <g key={b.id} opacity={b.enabled ? 1 : 0.35}>
-              <rect x={x(from)} y={y + 3} width={Math.max(2, x(to - from))} height={RESPONSE_H - 8} rx={3} className="fill-sensor/12 stroke-sensor/40" strokeDasharray={b.window ? undefined : '3 3'} />
+              <rect
+                x={x(from)}
+                y={y + 3}
+                width={Math.max(2, x(to - from))}
+                height={RESPONSE_H - 8}
+                rx={3}
+                className="fill-sensor/12 stroke-sensor/40"
+                strokeDasharray={b.window ? undefined : '3 3'}
+              />
               <text x={x(from) + 6} y={y + RESPONSE_H / 2 + 3} className="fill-sensor text-[10px]">
                 {b.name} · {b.trigger.sensorId}:{b.trigger.event}
               </text>
@@ -379,7 +390,14 @@ function ResponsesLane({
                       points={`${x(s.startAt)},${y + RESPONSE_H - 4} ${x(s.startAt + b.blendMs)},${y + 2} ${x(s.startAt + b.blendMs)},${y + RESPONSE_H - 4}`}
                       className="fill-primary/40"
                     />
-                    <rect x={x(s.startAt + b.blendMs)} y={y + 2} width={x(b.durationMs)} height={RESPONSE_H - 6} rx={2} className="fill-primary/70" />
+                    <rect
+                      x={x(s.startAt + b.blendMs)}
+                      y={y + 2}
+                      width={x(b.durationMs)}
+                      height={RESPONSE_H - 6}
+                      rx={2}
+                      className="fill-primary/70"
+                    />
                     <polygon
                       points={`${x(s.startAt + b.blendMs + b.durationMs)},${y + 2} ${x(s.startAt + 2 * b.blendMs + b.durationMs)},${y + RESPONSE_H - 4} ${x(s.startAt + b.blendMs + b.durationMs)},${y + RESPONSE_H - 4}`}
                       className="fill-primary/40"
@@ -400,6 +418,8 @@ export function Timeline(props: TimelineProps) {
     props
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
   const scroller = useRef<HTMLDivElement>(null)
+  // Viewers can select keys and scrub, but not add or move them.
+  const editable = useEditable()
   const behaviors = props.behaviors ?? EMPTY
   const rows = useMemo(
     () => buildRows(environment, characters, collapsed, behaviors),
@@ -426,7 +446,7 @@ export function Timeline(props: TimelineProps) {
     onSelect({ row: row.ref, index })
     const keys = keysOf(tracks, row.ref)
     const key = keys[index]
-    if (!key) return
+    if (!key || !editable) return
     const startX = e.clientX
     const startY = e.clientY
     const origT = key.t
@@ -462,6 +482,7 @@ export function Timeline(props: TimelineProps) {
   }
 
   const addKey = (row: TrackRow, t: number) => {
+    if (!editable) return
     const at = snap(t)
     if (row.type === 'audio') return props.onAddAudioCue(row.ref.deviceId, at)
     let index = 0
@@ -544,7 +565,17 @@ export function Timeline(props: TimelineProps) {
 
         {rows.map((row) => {
           if (row.type === 'responses')
-            return <ResponsesLane key="responses" behaviors={behaviors} playback={playback} pxPerSecond={pxPerSecond} width={laneW} height={row.height} durationMs={durationMs} />
+            return (
+              <ResponsesLane
+                key="responses"
+                behaviors={behaviors}
+                playback={playback}
+                pxPerSecond={pxPerSecond}
+                width={laneW}
+                height={row.height}
+                durationMs={durationMs}
+              />
+            )
           if (row.type === 'group') {
             const isCollapsed = collapsed.has(row.id)
             const g = GROUP_STYLE[row.kind]
@@ -615,7 +646,7 @@ export function Timeline(props: TimelineProps) {
                 onDoubleClick={(e) => addKey(row, xToT(e.clientX, e.currentTarget))}
                 data-testid={`lane-${rowKey(row.ref)}`}
               >
-                <title>Double-click to add a key</title>
+                <title>{editable ? 'Double-click to add a key' : 'Click a key to inspect it'}</title>
                 {row.type === 'motion' && (
                   <MotionLane
                     keys={keysOf(tracks, row.ref) as MotionKey[]}

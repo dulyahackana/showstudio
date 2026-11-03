@@ -32,6 +32,7 @@ export const lab: EnvironmentDefinition = {
   ],
   audio: [{ deviceId: 'audio-01', name: 'Main', position: [0, 2, 3], maxVolumeDb: -6 }],
   sensors: [{ deviceId: 'door', name: 'Door', type: 'presence', position: [0, 0, 4.5], range: 1.5 }],
+  scenery: [],
 }
 
 export const AUDIO_ID = 'a'.repeat(64)

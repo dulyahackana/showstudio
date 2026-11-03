@@ -6,7 +6,7 @@ import type { SaveStatus } from '@/lib/doc-editor'
 import { cn } from '@/lib/utils'
 
 const tone = {
-  ok: 'border-sensor/25 bg-sensor/10 text-sensor',
+  ok: 'border-ok/25 bg-ok/10 text-ok',
   warn: 'border-warn/25 bg-warn/10 text-warn',
   bad: 'border-danger/30 bg-danger/10 text-danger',
   info: 'border-motion/25 bg-motion/10 text-motion',

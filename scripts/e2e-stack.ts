@@ -53,7 +53,20 @@ await new Promise<void>((done, fail) =>
     code === 0 ? done() : fail(new Error(`seed exited ${code}`)),
   ),
 )
-run(bun, ['apps/fleet-sim/src/main.ts', '--env', 'dragons-lair', '--data', join(dataDir, 'fleet'), '--quiet'], root)
+run(
+  bun,
+  [
+    'apps/fleet-sim/src/main.ts',
+    '--env',
+    'dragons-lair',
+    '--env',
+    'burrow-hollow',
+    '--data',
+    join(dataDir, 'fleet'),
+    '--quiet',
+  ],
+  root,
+)
 run(bun, ['--bun', 'x', 'vite', '--port', '5173', '--strictPort'], join(root, 'apps/editor'))
 await waitFor('http://localhost:5173')
 console.log(`e2e stack ready (data: ${dataDir})`)

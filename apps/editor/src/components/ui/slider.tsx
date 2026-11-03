@@ -1,5 +1,6 @@
 import * as React from "react"
 import { cn } from "cn"
+import { useEditable } from "@/components/editable"
 import { Slider as SliderPrimitive } from "radix-ui"
 
 function Slider({
@@ -8,8 +9,10 @@ function Slider({
   value,
   min = 0,
   max = 100,
+  disabled,
   ...props
 }: React.ComponentProps<typeof SliderPrimitive.Root>) {
+  const ro = disabled === undefined && !useEditable()
   const _values = React.useMemo(
     () =>
       Array.isArray(value)
@@ -23,12 +26,14 @@ function Slider({
   return (
     <SliderPrimitive.Root
       data-slot="slider"
+      disabled={disabled ?? ro}
+      data-readonly={ro || undefined}
       defaultValue={defaultValue}
       value={value}
       min={min}
       max={max}
       className={cn(
-        "relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col",
+        "relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-[readonly]:opacity-100 data-vertical:h-full data-vertical:min-h-40 data-vertical:w-auto data-vertical:flex-col",
         className
       )}
       {...props}

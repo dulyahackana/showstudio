@@ -16,6 +16,8 @@ export function useLiveFrame(status: EnvironmentStatus | undefined, serverNow: n
   const run = activeRun(status)
   const show = useRevision<'show'>(run ? { id: run.showId, revision: run.revision } : null)
   const { environment, characters } = useShowContext(show.data?.content.environment)
+  // Status polls return a new run object every second; recompile only when the show changes.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: keyed by show id and revision on purpose
   const bundle = useMemo(() => {
     if (!run || !show.data || !environment) return null
     try {

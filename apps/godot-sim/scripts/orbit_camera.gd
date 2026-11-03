@@ -3,15 +3,15 @@ extends Camera3D
 
 var target := Vector3.ZERO
 var distance := 14.0
-var yaw := 0.5
-var pitch := -0.5
+var yaw := 0.32
+var pitch := -0.4
 var _home := {}
 
 
 func frame_box(a: Vector3, b: Vector3) -> void:
-	target = (a + b) / 2.0
-	distance = clampf((b - a).length() * 1.35, 4.0, 80.0)
-	h_offset = -distance * 0.12  # stage sits right of the HUD
+	target = Vector3((a.x + b.x) / 2.0, a.y + 1.0, (a.z + b.z) / 2.0)
+	distance = clampf((b - a).length() * 0.95, 4.0, 80.0)
+	h_offset = 0.0
 	_home = {"target": target, "distance": distance}
 	_update()
 

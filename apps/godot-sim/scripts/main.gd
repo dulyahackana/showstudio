@@ -25,6 +25,8 @@ var _trace_in := 0.0
 
 func _ready() -> void:
 	config = parse_args(OS.get_cmdline_user_args())
+	# Several twins can run at once (one per attraction); tell their windows apart.
+	DisplayServer.window_set_title("Show Studio · %s" % config["env"])
 	if DisplayServer.get_name() == "headless":
 		Engine.max_fps = 60
 	get_viewport().physics_object_picking = true

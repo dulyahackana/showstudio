@@ -1,11 +1,9 @@
 import { type PreparedShow, SENSOR_EVENTS } from '@studio/schema'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { OctagonX, Play, Radar, RefreshCw, Square } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { Link } from '@tanstack/react-router'
+import { OctagonX, Play, Radar, RefreshCw, Rocket, Square } from 'lucide-react'
+import { useState } from 'react'
 import { toast } from 'sonner'
-import { z } from 'zod'
-import { EnvironmentPicker } from '@/components/environment-picker'
 import { FloorPlan } from '@/components/floor-plan'
 import { KindIcon, STATE_STYLE, StatusDot } from '@/components/kind'
 import { Panel } from '@/components/page'
@@ -29,15 +27,10 @@ import { mergeDevices } from '@/features/fleet/merge-devices'
 import { useNow } from '@/hooks/use-now'
 import { api, problemMessage } from '@/lib/api'
 import { formatMs } from '@/lib/format'
-import { docsQuery, envStatusQuery, qk, useCharacters, useRevision } from '@/lib/queries'
-import { useDocPermission } from '@/lib/project'
-import { useCan } from '@/lib/session'
+import { useProjects } from '@/lib/project'
+import { envStatusQuery, qk, useCharacters, useRevision } from '@/lib/queries'
+import { canCall, useCan, useUser } from '@/lib/session'
 import { cn } from '@/lib/utils'
-
-export const Route = createFileRoute('/operator')({
-  validateSearch: z.object({ env: z.string().optional() }),
-  component: OperatorPage,
-})
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
@@ -47,29 +40,29 @@ const toastError = (err: unknown) => {
 }
 
 /**
- * The park operator's view, deliberately separate from the studio: big targets,
- * readiness at a glance, e-stop always visible, and a zone-clear confirmation
- * before anything moves.
+ * The control room for one environment: big targets, readiness at a glance, e-stop
+ * always visible, and a zone-clear confirmation before anything moves. focusShowId
+ * puts one project's show first (its Launch step).
  */
-function OperatorPage() {
-  const { env } = Route.useSearch()
-  const navigate = useNavigate()
+export function OperatorConsole({ environmentId, focusShowId }: { environmentId: string; focusShowId?: string }) {
   const qc = useQueryClient()
-  const { data: envs = [] } = useQuery(docsQuery('environment'))
-  const environmentId = env ?? envs.find((e) => e.latestRevision)?.id
-  useEffect(() => {
-    if (!env && environmentId) void navigate({ to: '/operator', search: { env: environmentId }, replace: true })
-  }, [env, environmentId, navigate])
-
-  const { data: status, dataUpdatedAt } = useQuery({ ...envStatusQuery(environmentId ?? ''), enabled: !!environmentId })
+  const user = useUser()
+  const { data: projects = [] } = useProjects()
+  const { data: status, dataUpdatedAt } = useQuery(envStatusQuery(environmentId))
   const layout = useRevision<'environment'>(
     environmentId && status?.environmentRevision ? { id: environmentId, revision: status.environmentRevision } : null,
   )
   const { characters } = useCharacters(layout.data?.content.placements.map((p) => p.character) ?? [])
   const now = useNow(100)
-  const operateRole = useCan('launch')
-  const operateProject = useDocPermission(envs.find((e) => e.id === environmentId)?.projectId, 'operate')
-  const canOperate = operateRole && operateProject
+  // Stop and reset act on the environment (workspace operator role); launching a show also
+  // needs the operator role in that show's project.
+  const canOperate = useCan('launch')
+  const operatesProject = (showId: string) =>
+    !!user?.roles.includes('admin') ||
+    ['owner', 'operator'].includes(projects.find((p) => p.id === showId)?.myRole ?? '')
+  const canLaunch = (showId: string) => canOperate && operatesProject(showId)
+  const canDeploy = (showId: string) => canCall(user, 'createDeployment') && operatesProject(showId)
+  const canSimulate = canCall(user, 'simulateSensor')
   const [launching, setLaunching] = useState<PreparedShow | null>(null)
   const [zoneClear, setZoneClear] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
@@ -82,10 +75,14 @@ function OperatorPage() {
   const devices = mergeDevices(status)
   const online = devices.filter((d) => d.online).length
   const states = Object.fromEntries(devices.map((d) => [d.id, d.online ? d.state : ('offline' as const)]))
-  const refresh = () => qc.invalidateQueries({ queryKey: qk.envStatus(environmentId ?? '') })
+  const refresh = () => qc.invalidateQueries({ queryKey: qk.envStatus(environmentId) })
+  const prepared = [...(status?.prepared ?? [])].sort(
+    (a, b) => Number(b.showId === focusShowId) - Number(a.showId === focusShowId),
+  )
+  const focusStaged = !focusShowId || prepared.some((p) => p.showId === focusShowId)
 
   const estop = useMutation({
-    mutationFn: () => api('estop', { body: { environmentId: environmentId ?? '', reason: 'operator e-stop' } }),
+    mutationFn: () => api('estop', { body: { environmentId, reason: 'operator e-stop' } }),
     onSuccess: () => {
       toast.error('E-STOP sent to every device')
       void refresh()
@@ -93,19 +90,19 @@ function OperatorPage() {
     onError: toastError,
   })
   const reset = useMutation({
-    mutationFn: () => api('resetEstop', { body: { environmentId: environmentId ?? '' } }),
+    mutationFn: () => api('resetEstop', { body: { environmentId } }),
     onSuccess: () => void refresh(),
     onError: toastError,
   })
   const stop = useMutation({
-    mutationFn: () => api('stop', { body: { environmentId: environmentId ?? '' } }),
+    mutationFn: () => api('stop', { body: { environmentId } }),
     onSuccess: () => void refresh(),
     onError: toastError,
   })
   const launch = useMutation({
     mutationFn: async (show: PreparedShow) => {
       if (run) {
-        await api('stop', { body: { environmentId: environmentId ?? '' } })
+        await api('stop', { body: { environmentId } })
         await sleep(600)
       }
       return api('launch', { body: { showId: show.showId, revision: show.revision, zoneClearConfirmed: true } })
@@ -118,7 +115,7 @@ function OperatorPage() {
   })
   const simulate = useMutation({
     mutationFn: ({ deviceId, event }: { deviceId: string; event: 'enter' | 'exit' | 'press' }) =>
-      api('simulateSensor', { params: { deviceId }, body: { environmentId: environmentId ?? '', event } }),
+      api('simulateSensor', { params: { deviceId }, body: { environmentId, event } }),
     onError: toastError,
   })
 
@@ -128,16 +125,12 @@ function OperatorPage() {
   const clock = new Date(serverNow)
 
   return (
-    <div className="flex h-full flex-col">
-      <header className="flex h-16 shrink-0 items-center gap-4 border-b bg-surface/60 px-6">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <header className="flex h-14 shrink-0 items-center gap-4 border-b bg-surface/40 px-6">
         <div className="min-w-0">
-          <div className="text-eyebrow">Operator console</div>
-          <div className="truncate font-semibold">{layout.data?.content.name ?? environmentId ?? '—'}</div>
+          <div className="text-eyebrow">Control room</div>
+          <div className="truncate text-sm font-semibold">{layout.data?.content.name ?? environmentId}</div>
         </div>
-        <EnvironmentPicker
-          value={environmentId}
-          onChange={(id) => void navigate({ to: '/operator', search: { env: id } })}
-        />
         <div className="ml-auto flex items-center gap-5">
           <div className="text-right">
             <div className="text-eyebrow">Park time</div>
@@ -152,8 +145,7 @@ function OperatorPage() {
           <button
             type="button"
             onClick={() => estop.mutate()}
-            disabled={!environmentId}
-            className="group flex h-11 items-center gap-2.5 rounded-lg border border-[#ff8a80]/30 bg-gradient-to-b from-[#b4232c] to-[#7f1d24] px-5 font-semibold tracking-[0.18em] text-white shadow-[0_0_0_3px_rgba(245,165,36,0.25),0_8px_24px_-8px_rgba(180,35,44,0.8)] transition hover:from-[#c8303a] active:scale-[0.97] disabled:opacity-40"
+            className="group flex h-11 items-center gap-2.5 rounded-lg border border-[#ff8a80]/30 bg-gradient-to-b from-[#b4232c] to-[#7f1d24] px-5 font-semibold tracking-[0.18em] text-white shadow-[0_0_0_3px_rgba(255,255,255,0.08),0_8px_24px_-8px_rgba(180,35,44,0.8)] transition hover:from-[#c8303a] active:scale-[0.97] disabled:opacity-40"
             data-testid="estop"
           >
             <OctagonX className="size-5" /> E-STOP
@@ -177,9 +169,13 @@ function OperatorPage() {
                 {status?.estop.at && new Date(status.estop.at).toLocaleTimeString()} · figures held at rest until reset
               </p>
             </div>
-            <Button variant="outline" disabled={!canOperate} onClick={() => setResetOpen(true)} data-testid="reset-estop">
-              <RefreshCw /> Reset
-            </Button>
+            {canOperate ? (
+              <Button variant="outline" onClick={() => setResetOpen(true)} data-testid="reset-estop">
+                <RefreshCw /> Reset
+              </Button>
+            ) : (
+              <span className="text-xs text-muted-foreground">An operator resets it after inspection</span>
+            )}
           </div>
         )}
 
@@ -229,29 +225,34 @@ function OperatorPage() {
                   )}
                   <div className="rounded-lg border bg-sidebar px-3 py-2">
                     {runShow.data ? (
-                      <ShowStrip show={runShow.data.content} progress={Math.max(0, elapsed) / run.durationMs} className="h-16" />
+                      <ShowStrip
+                        show={runShow.data.content}
+                        progress={Math.max(0, elapsed) / run.durationMs}
+                        className="h-16"
+                      />
                     ) : (
                       <div className="h-16" />
                     )}
                   </div>
                 </div>
               )}
-              {run ? (
-                <Button
-                  size="lg"
-                  variant="secondary"
-                  className="self-start"
-                  disabled={!canOperate || stop.isPending}
-                  onClick={() => stop.mutate()}
-                  data-testid="stop"
-                >
-                  <Square /> Stop show
-                </Button>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Launch a prepared show below. Every controller starts together a few seconds after you confirm.
-                </p>
-              )}
+              {canOperate &&
+                (run ? (
+                  <Button
+                    size="lg"
+                    variant="secondary"
+                    className="self-start"
+                    disabled={stop.isPending}
+                    onClick={() => stop.mutate()}
+                    data-testid="stop"
+                  >
+                    <Square /> Stop show
+                  </Button>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Launch a prepared show below. Every controller starts together a few seconds after you confirm.
+                  </p>
+                ))}
             </div>
           </Panel>
 
@@ -276,7 +277,11 @@ function OperatorPage() {
               {devices.map((d) => {
                 const key = d.online ? d.state : 'offline'
                 return (
-                  <div key={d.id} className="flex items-center gap-2 bg-card px-3 py-2" title={`${d.id}: ${STATE_STYLE[key].label}`}>
+                  <div
+                    key={d.id}
+                    className="flex items-center gap-2 bg-card px-3 py-2"
+                    title={`${d.id}: ${STATE_STYLE[key].label}`}
+                  >
                     <KindIcon kind={d.kind} className="size-3.5" />
                     <span className="min-w-0 flex-1 truncate font-mono text-[11px]">{d.id}</span>
                     <StatusDot state={key} />
@@ -291,17 +296,36 @@ function OperatorPage() {
           <div className="flex items-end justify-between">
             <div>
               <h2 className="text-sm font-semibold">Prepared shows</h2>
-              <p className="text-xs text-muted-foreground">Staged and verified on every controller. Launch one, or swap at any time.</p>
+              <p className="text-xs text-muted-foreground">
+                Staged and verified on every controller. Launch one, or swap at any time.
+              </p>
             </div>
           </div>
+          {!focusStaged && focusShowId && (
+            <div className="flex items-center gap-3 rounded-xl border border-dashed p-4 text-sm">
+              <Rocket className="size-4 text-muted-foreground" />
+              <span className="flex-1 text-muted-foreground">
+                This show is not staged on {layout.data?.content.name ?? environmentId} yet.
+              </span>
+              {canDeploy(focusShowId) && (
+                <Button size="sm" variant="outline" asChild>
+                  <Link to="/projects/$projectId/deploy" params={{ projectId: focusShowId }}>
+                    Go to Deploy
+                  </Link>
+                </Button>
+              )}
+            </div>
+          )}
           <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-            {(status?.prepared ?? []).map((p) => (
+            {prepared.map((p) => (
               <PreparedCard
                 key={p.sha256}
                 show={p}
+                focused={p.showId === focusShowId}
                 running={run?.sha256 === p.sha256}
                 swapping={!!run && run.sha256 !== p.sha256}
-                disabled={!canOperate || !p.goodToGo || estopActive || run?.sha256 === p.sha256 || launch.isPending}
+                canLaunch={canLaunch(p.showId)}
+                disabled={!p.goodToGo || estopActive || run?.sha256 === p.sha256 || launch.isPending}
                 onLaunch={() => {
                   setZoneClear(false)
                   setLaunching(p)
@@ -309,12 +333,14 @@ function OperatorPage() {
               />
             ))}
             {status && status.prepared.length === 0 && (
-              <p className="text-sm text-muted-foreground">No shows staged. Deploy an approved show from Fleet & deploy.</p>
+              <p className="text-sm text-muted-foreground">
+                No shows staged. Deploy an approved show from its project (step 3, Deploy).
+              </p>
             )}
           </div>
         </section>
 
-        {layout.data && layout.data.content.sensors.length > 0 && (
+        {canSimulate && layout.data && layout.data.content.sensors.length > 0 && (
           <section className="space-y-3">
             <div>
               <h2 className="text-sm font-semibold">Guest simulation</h2>
@@ -391,21 +417,29 @@ function OperatorPage() {
 
 function PreparedCard({
   show,
+  focused,
   running,
   swapping,
+  canLaunch,
   disabled,
   onLaunch,
 }: {
   show: PreparedShow
+  focused: boolean
   running: boolean
   swapping: boolean
+  canLaunch: boolean
   disabled: boolean
   onLaunch: () => void
 }) {
   const rev = useRevision<'show'>({ id: show.showId, revision: show.revision })
   return (
     <Panel
-      className={cn('flex flex-col overflow-hidden transition', running && 'border-motion/50 shadow-[0_0_0_1px_var(--motion)]')}
+      className={cn(
+        'flex flex-col overflow-hidden transition',
+        focused && 'border-primary/50',
+        running && 'border-motion/50 shadow-[0_0_0_1px_var(--motion)]',
+      )}
       data-testid={`prepared-${show.showId}`}
     >
       <div className="flex items-start justify-between gap-2 p-4">
@@ -429,11 +463,21 @@ function PreparedCard({
       <div className="mx-4 rounded-md border bg-sidebar px-2 py-1.5">
         {rev.data ? <ShowStrip show={rev.data.content} /> : <div className="h-14" />}
       </div>
-      <div className="p-4">
-        <Button size="lg" className="w-full" disabled={disabled} onClick={onLaunch} data-testid={`launch-${show.showId}`}>
-          <Play /> {swapping ? 'Swap to this show' : 'Launch'}
-        </Button>
-      </div>
+      {canLaunch ? (
+        <div className="p-4">
+          <Button
+            size="lg"
+            className="w-full"
+            disabled={disabled}
+            onClick={onLaunch}
+            data-testid={`launch-${show.showId}`}
+          >
+            <Play /> {swapping ? 'Swap to this show' : 'Launch'}
+          </Button>
+        </div>
+      ) : (
+        <div className="h-4" />
+      )}
     </Panel>
   )
 }

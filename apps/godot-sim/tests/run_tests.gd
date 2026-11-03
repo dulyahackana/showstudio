@@ -10,6 +10,7 @@ const Net := preload("res://scripts/net.gd")
 const Playback := preload("res://scripts/playback.gd")
 const Scheduler := preload("res://scripts/scheduler.gd")
 const Validator := preload("res://scripts/validator.gd")
+const Figure := preload("res://scripts/figure.gd")
 
 var _failures := 0
 var _passes := 0
@@ -87,6 +88,25 @@ func _initialize() -> void:
 		_check(contract.validate({"type": "selfDestruct"}, "FleetToDevice") != "", "unknown command is rejected")
 		var status := {"type": "status", "state": "ready", "staged": [], "active": null, "fault": null}
 		_check(contract.validate(status, "DeviceToFleet") == "", "status message is valid")
+	)
+
+	_case("figure: joints drive skeleton bones, not same-named attachment nodes", func():
+		# The wizard's hat hangs off "head" in a BoneAttachment3D also called "head"; posing must turn the bone.
+		var figure: Node3D = Figure.new()
+		root.add_child(figure)
+		figure.setup({"footprint": {"size": [1, 2, 1]}, "joints": [
+			{"name": "head_turn", "node": "head", "type": "revolute", "axis": [0, 1, 0], "home": 0},
+			{"name": "head_nod", "node": "head", "type": "revolute", "axis": [1, 0, 0], "home": 0},
+		]})
+		var err: String = figure.load_glb(FileAccess.get_file_as_bytes(_repo.path_join("samples/wizard.glb")))
+		_check(err == "", "wizard loads: " + err)
+		var skeleton: Skeleton3D = figure.find_children("*", "Skeleton3D", true, false)[0]
+		var head := skeleton.find_bone("head")
+		var rest := skeleton.get_bone_pose_rotation(head)
+		figure.apply_pose({"head_turn": 60.0})
+		var turned := rad_to_deg(rest.angle_to(skeleton.get_bone_pose_rotation(head)))
+		_check(absf(turned - 60.0) < 0.5, "head bone turns 60 degrees (turned %.1f)" % turned)
+		figure.free()
 	)
 
 	print("\n%d passed, %d failed" % [_passes, _failures])

@@ -40,9 +40,15 @@ export const AssetList = z.array(Asset).meta({ id: 'AssetList' })
 export const DocKind = z.enum(['character', 'environment', 'show']).meta({ id: 'DocKind' })
 export type DocKind = z.infer<typeof DocKind>
 
+export const RevisionStatus = z
+  .enum(['published', 'approved', 'rejected'])
+  .meta({ id: 'RevisionStatus', description: 'Shows need safety approval before deployment' })
+export type RevisionStatus = z.infer<typeof RevisionStatus>
+
 const docBase = {
   id: Id,
-  projectId: Id.describe('Owning project; access is granted per project'),
+  projectId: Id.nullable().describe('Shows: their project (same id), which grants access. Otherwise null'),
+  locationId: Id.nullable().describe('Environments: the location they are installed at. Otherwise null'),
   name: z.string(),
   draftVersion: z.number().int().positive().describe('Optimistic-concurrency token for the draft'),
   createdAt: Timestamp,
@@ -50,6 +56,7 @@ const docBase = {
   updatedAt: Timestamp,
   updatedBy: z.string(),
   latestRevision: Revision.nullable(),
+  latestRevisionStatus: RevisionStatus.nullable().describe('Review state of latestRevision'),
   latestApprovedRevision: Revision.nullable(),
 }
 
@@ -75,11 +82,13 @@ export type DocumentOf<K extends DocKind> = Extract<StudioDocument, { kind: K }>
 
 export const CreateDocumentRequest = z
   .discriminatedUnion('kind', [
-    z.object({ kind: z.literal('character'), id: Id, projectId: Id, draft: CharacterDefinition }),
-    z.object({ kind: z.literal('environment'), id: Id, projectId: Id, draft: EnvironmentDefinition }),
-    z.object({ kind: z.literal('show'), id: Id, projectId: Id, draft: ShowDefinition }),
+    z.object({ kind: z.literal('character'), id: Id, draft: CharacterDefinition }),
+    z.object({ kind: z.literal('environment'), id: Id, locationId: Id, draft: EnvironmentDefinition }),
   ])
-  .meta({ id: 'CreateDocumentRequest' })
+  .meta({
+    id: 'CreateDocumentRequest',
+    description: 'Characters go to the library, environments to a location. Shows are created with their project',
+  })
 
 export const SaveDraftRequest = z
   .discriminatedUnion('kind', [
@@ -95,11 +104,6 @@ export const SaveDraftRequest = z
     id: 'SaveDraftRequest',
     description: 'draftVersion must match the stored draft, otherwise 409 (someone else saved first)',
   })
-
-export const RevisionStatus = z
-  .enum(['published', 'approved', 'rejected'])
-  .meta({ id: 'RevisionStatus', description: 'Shows need safety approval before deployment' })
-export type RevisionStatus = z.infer<typeof RevisionStatus>
 
 export const RevisionSummary = z
   .object({

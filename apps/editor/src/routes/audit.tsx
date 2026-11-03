@@ -69,6 +69,7 @@ function AuditPage() {
   return (
     <>
       <PageHeader
+        eyebrow="Admin"
         title="Audit log"
         description="Append-only and hash-chained: every publish, approval, deployment, launch and e-stop, with who did it."
         actions={
