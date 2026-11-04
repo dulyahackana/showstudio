@@ -12,7 +12,7 @@ import { DevicesView } from '@/features/fleet/devices-view'
 import { api, problemMessage } from '@/lib/api'
 import { shortSha } from '@/lib/format'
 import { projectQuery, useProjectCan, useProjectStage } from '@/lib/project'
-import { docsQuery, qk, revisionsQuery } from '@/lib/queries'
+import { docsQuery, envStatusQuery, qk, revisionsQuery } from '@/lib/queries'
 import { useCan } from '@/lib/session'
 
 export const Route = createFileRoute('/projects/$projectId/deploy')({ component: DeployStep })
@@ -43,6 +43,8 @@ function DeployPanel({ project }: { project: Project }) {
   const [picked, setPicked] = useState<number | null>(null)
   const revision = picked ?? approved[0]?.revision ?? null
   const [reasons, setReasons] = useState<string[] | null>(null)
+  const { data: status } = useQuery(envStatusQuery(project.environmentId))
+  const staged = status?.prepared.find((p) => p.showId === project.id && p.revision === revision)
 
   const deploy = useMutation({
     mutationFn: () => api('createDeployment', { body: { showId: project.id, revision: revision ?? 0 } }),
@@ -94,8 +96,13 @@ function DeployPanel({ project }: { project: Project }) {
               ))}
             </SelectContent>
           </Select>
-          <Button disabled={!revision || deploy.isPending} onClick={() => deploy.mutate()} data-testid="deploy-show">
-            <Rocket /> {deploy.isPending ? 'Deploying…' : 'Deploy'}
+          <Button
+            variant={staged?.goodToGo ? 'outline' : 'default'}
+            disabled={!revision || deploy.isPending}
+            onClick={() => deploy.mutate()}
+            data-testid="deploy-show"
+          >
+            <Rocket /> {deploy.isPending ? 'Deploying…' : staged?.goodToGo ? 'Redeploy' : 'Deploy'}
           </Button>
         </div>
       )}
@@ -111,12 +118,24 @@ function DeployPanel({ project }: { project: Project }) {
           </AlertDescription>
         </Alert>
       )}
-      {stage.stage === 'launch' && (
-        <Button className="w-full" variant="outline" asChild>
-          <Link to="/projects/$projectId/launch" params={{ projectId: project.id }} data-testid="next-launch">
-            Good to go. Next: launch <ArrowRight />
-          </Link>
-        </Button>
+      {staged && !staged.goodToGo && (
+        <p className="text-sm text-muted-foreground">
+          Staging r{staged.revision}: {staged.stagedOn} of {staged.targets} controllers verified.
+        </p>
+      )}
+      {(staged?.goodToGo || stage.stage === 'launch') && (
+        <div className="space-y-2">
+          {staged?.goodToGo && (
+            <p className="text-sm text-ok">
+              r{staged.revision} is on all {staged.targets} controllers of {envName}, verified.
+            </p>
+          )}
+          <Button className="w-full" asChild>
+            <Link to="/projects/$projectId/launch" params={{ projectId: project.id }} data-testid="next-launch">
+              Next: launch <ArrowRight />
+            </Link>
+          </Button>
+        </div>
       )}
     </Panel>
   )

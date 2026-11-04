@@ -90,7 +90,7 @@ export function PublishDialog({
     >
       <DialogTrigger asChild>
         <Button size="sm" data-testid="publish">
-          <Upload /> Publish
+          <Upload /> {requiresReview ? 'Publish for review' : 'Publish'}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-lg">

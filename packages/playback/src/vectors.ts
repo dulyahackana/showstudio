@@ -10,7 +10,14 @@ import type {
 import { compileBundle } from './compile.ts'
 import { characters, lab, makeShow, robot } from './fixtures.ts'
 import { type LightSample, sampleJoint, sampleLight } from './interpolate.ts'
-import { audioEventsBetween, BehaviorScheduler, type ShowFrame, type StartedBehavior, sampleFrame } from './runtime.ts'
+import {
+  audioEventsBetween,
+  BehaviorScheduler,
+  type ShowFrame,
+  type StartedBehavior,
+  sampleFrame,
+  standbyBundle,
+} from './runtime.ts'
 import { validateDollPayload } from './validate.ts'
 
 /**
@@ -35,6 +42,8 @@ export interface Vectors {
   scheduler: { name: string; behaviors: BehaviorSchedule[]; steps: SchedulerStep[] }[]
   /** Device-side limit check: the sorted, distinct error codes validateDollPayload reports. */
   deviceChecks: DeviceCheck[]
+  /** Between shows: standbyBundle(bundle), null when the show has no standby responses. */
+  standby: { name: string; bundle: ShowBundle; standby: ShowBundle | null }[]
 }
 
 export interface AudioVector {
@@ -224,6 +233,15 @@ export function buildVectors(): Vectors {
     assetPath: (id) => `/api/v1/assets/${id}`,
   })
   const started = [{ id: 'wave', startAt: 3500 }]
+  const withStandby = makeShow()
+  for (const b of withStandby.behaviors) Object.assign(b, { standby: true, window: { fromMs: 0, toMs: 100 } })
+  const standbyShow = compileBundle({
+    show: { id: 'demo', revision: 2 },
+    definition: withStandby,
+    environment: lab,
+    characters,
+    assetPath: (id) => `/api/v1/assets/${id}`,
+  })
   return {
     description: 'Show Studio playback conformance vectors. Times in ms, angles in degrees, colors 0..1.',
     tolerance: 1e-6,
@@ -286,5 +304,9 @@ export function buildVectors(): Vectors {
       ),
     ],
     deviceChecks: deviceChecks(bundle),
+    standby: [
+      { name: 'no standby responses', bundle, standby: standbyBundle(bundle) },
+      { name: 'windowed response, also between shows', bundle: standbyShow, standby: standbyBundle(standbyShow) },
+    ],
   }
 }

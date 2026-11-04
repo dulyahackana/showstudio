@@ -1,6 +1,8 @@
 import { randomUUID } from 'node:crypto'
 import {
   API_PREFIX,
+  type ConsoleButton,
+  type ConsoleMsg,
   type Deployment,
   type Device,
   DeviceToFleet,
@@ -9,6 +11,7 @@ import {
   environmentDevices,
   type FleetToDevice,
   type HelloMsg,
+  type PanelMsg,
   PROTOCOL_VERSION,
   type PreparedShow,
   type ProvisioningResponse,
@@ -27,7 +30,7 @@ import type { WebSocket } from 'ws'
 import type { AuditLog } from '../audit.ts'
 import type { Config } from '../config.ts'
 import { type Db, iso, isoOrNull } from '../db/index.ts'
-import { problems } from '../problems.ts'
+import { HttpProblem, problems } from '../problems.ts'
 import { deviceToken, type Signer, verifyDeviceToken } from '../security.ts'
 import type { StudioService } from './studio.ts'
 
@@ -42,6 +45,8 @@ interface Connection {
   status: StatusMsg | null
   lastSeen: number
   sent: Map<string, number>
+  /** Consoles: the last panel state sent, so it is only resent when it changes. */
+  panel?: string
 }
 
 interface BundleMeta {
@@ -81,6 +86,11 @@ interface RunRow {
 
 const key = (environmentId: string, deviceId: string) => `${environmentId}/${deviceId}`
 
+/** Who did it: a signed-in person, or an on-site console (by device id). */
+type Actor = Pick<User, 'name'>
+
+const PANEL_MS = 1000
+
 export interface FleetEvents {
   onDeploy?: () => void
   onLaunch?: () => void
@@ -98,6 +108,8 @@ export class FleetService {
   private readonly desired = new Map<string, Set<string>>()
   private readonly bundles = new Map<string, BundleMeta>()
   private readonly sweep: NodeJS.Timeout
+  private readonly panels: NodeJS.Timeout
+  private readonly latching = new Set<string>()
 
   constructor(
     private readonly db: Db,
@@ -110,6 +122,9 @@ export class FleetService {
   ) {
     this.sweep = setInterval(() => this.dropStale(), HEARTBEAT_MS)
     this.sweep.unref()
+    // Console displays follow the attraction (deploys staging, runs ending) once a second.
+    this.panels = setInterval(() => void this.pushPanels(), PANEL_MS)
+    this.panels.unref()
   }
 
   async init(): Promise<void> {
@@ -122,6 +137,7 @@ export class FleetService {
 
   close(): void {
     clearInterval(this.sweep)
+    clearInterval(this.panels)
     for (const c of this.conns.values()) c.socket.close(1001, 'server shutting down')
   }
 
@@ -174,10 +190,14 @@ export class FleetService {
     if (conn.socket.readyState === conn.socket.OPEN) conn.socket.send(JSON.stringify(msg))
   }
 
-  private broadcast(environmentId: string, make: (opId: string) => FleetToDevice): number {
+  private broadcast(
+    environmentId: string,
+    make: (opId: string) => FleetToDevice,
+    to: (conn: Connection) => boolean = () => true,
+  ): number {
     let n = 0
     for (const conn of this.conns.values()) {
-      if (conn.hello.environmentId !== environmentId) continue
+      if (conn.hello.environmentId !== environmentId || !to(conn)) continue
       this.send(conn, make(randomUUID()))
       n++
     }
@@ -224,6 +244,7 @@ export class FleetService {
           if (estop.active)
             this.send(conn, { type: 'estop', opId: randomUUID(), reason: estop.reason ?? 'e-stop latched' })
           this.log.info({ device: k, kind: msg.kind, firmware: msg.firmware }, 'device connected')
+          if (msg.kind === 'console') await this.pushPanels(msg.environmentId)
           return
         }
         conn.lastSeen = Date.now()
@@ -232,10 +253,13 @@ export class FleetService {
           conn.status = msg
           if (changed) await this.persistStatus(conn)
           await this.reconcile(conn)
+          if (msg.estopPressed) await this.consoleLatched(conn)
         } else if (msg.type === 'ack' && !msg.ok) {
           this.log.warn({ device: conn.hello.deviceId, opId: msg.opId, error: msg.error }, 'device rejected command')
         } else if (msg.type === 'sensorEvent') {
           this.log.info({ sensor: msg.sensorId, event: msg.event }, 'sensor event (handled locally in the park)')
+        } else if (msg.type === 'console') {
+          await this.onConsole(conn, msg)
         }
       } catch (err) {
         this.log.error({ err }, 'device message handling failed')
@@ -579,7 +603,7 @@ export class FleetService {
     return created
   }
 
-  async launch(showId: string, revision: number, user: User): Promise<ShowRun> {
+  async launch(showId: string, revision: number, user: Actor): Promise<ShowRun> {
     const meta = await this.approvedBundle(showId, revision)
     const envId = meta.bundle.environment.id
     if ((await this.estopState(envId)).active) throw problems.conflict('E-stop is latched; reset it before launching')
@@ -630,9 +654,39 @@ export class FleetService {
         tx,
       )
     })
-    this.broadcast(envId, (opId) => ({ type: 'launch', opId, sha256: meta.sha256, startAt: run.start_at }))
+    // Consoles play nothing; their displays follow the run through panel updates.
+    this.broadcast(
+      envId,
+      (opId) => ({ type: 'launch', opId, sha256: meta.sha256, startAt: run.start_at }),
+      (c) => c.hello.kind !== 'console',
+    )
     this.events.onLaunch?.()
+    void this.pushPanels(envId)
     return this.toRun(run)
+  }
+
+  /** Refuses while the show is scheduled or running anywhere. */
+  async assertNotLive(showId: string): Promise<void> {
+    const runs = await this.db.query<RunRow>('select * from show_runs where show_id = $1 and stopped_at is null', [
+      showId,
+    ])
+    const live = runs.find((r) => ['scheduled', 'running'].includes(this.runStatus(r)))
+    if (live) throw problems.conflict(`"${live.name}" is running in ${live.environment_id}; stop it first`)
+  }
+
+  /**
+   * Takes every revision of a show off the controllers (its project was deleted): no
+   * longer desired, so reconciliation removes it. Recovering the project does not bring
+   * it back; it is deployed again like any show.
+   */
+  async undeployShow(showId: string): Promise<void> {
+    const removed = await this.db.query<{ environment_id: string; device_id: string; sha256: string }>(
+      `delete from desired_bundles where sha256 in (select sha256 from bundles where show_id = $1)
+       returning environment_id, device_id, sha256`,
+      [showId],
+    )
+    for (const r of removed) this.desiredFor(r.environment_id, r.device_id).delete(r.sha256)
+    for (const conn of this.conns.values()) await this.reconcile(conn)
   }
 
   private async stopRun(environmentId: string, reason: string, tx: Db): Promise<void> {
@@ -643,15 +697,16 @@ export class FleetService {
     )
   }
 
-  async stop(environmentId: string, user: User): Promise<void> {
+  async stop(environmentId: string, user: Actor): Promise<void> {
     await this.db.transaction(async (tx) => {
       await this.stopRun(environmentId, `stopped by ${user.name}`, tx)
       await this.audit.append(user.name, 'show.stop', 'environment', environmentId, {}, tx)
     })
     this.broadcast(environmentId, (opId) => ({ type: 'stop', opId }))
+    void this.pushPanels(environmentId)
   }
 
-  async estop(environmentId: string, reason: string, user: User): Promise<void> {
+  async estop(environmentId: string, reason: string, user: Actor): Promise<void> {
     // Command devices first; bookkeeping must never delay an e-stop.
     const reached = this.broadcast(environmentId, (opId) => ({ type: 'estop', opId, reason }))
     this.events.onEstop?.()
@@ -671,15 +726,25 @@ export class FleetService {
         tx,
       )
     })
+    void this.pushPanels(environmentId)
   }
 
-  async resetEstop(environmentId: string, user: User): Promise<void> {
+  async resetEstop(environmentId: string, user: Actor): Promise<void> {
     if (!(await this.estopState(environmentId)).active) throw problems.conflict('E-stop is not active')
+    // A mushroom still pushed in on site wins over any reset, from the studio or a console.
+    const held = [...this.conns.values()].filter(
+      (c) => c.hello.environmentId === environmentId && c.hello.kind === 'console' && c.status?.estopPressed,
+    )
+    if (held.length)
+      throw problems.conflict(
+        `The E-STOP on ${held.map((c) => c.hello.deviceId).join(', ')} is still pushed in; twist it out on site first`,
+      )
     await this.db.transaction(async (tx) => {
       await tx.query('update estops set active = false where environment_id = $1', [environmentId])
       await this.audit.append(user.name, 'estop.reset', 'environment', environmentId, {}, tx)
     })
     this.broadcast(environmentId, (opId) => ({ type: 'reset', opId }))
+    void this.pushPanels(environmentId)
   }
 
   simulateSensor(environmentId: string, deviceId: string, event: SensorEvent): void {
@@ -687,6 +752,97 @@ export class FleetService {
     if (!conn) throw problems.notFound(`Sensor ${deviceId} is offline`)
     if (conn.hello.kind !== 'sensor') throw problems.badRequest(`${deviceId} is not a sensor`)
     this.send(conn, { type: 'simulateSensor', opId: randomUUID(), event })
+  }
+
+  simulateConsole(environmentId: string, deviceId: string, button: ConsoleButton): void {
+    const conn = this.conns.get(key(environmentId, deviceId))
+    if (!conn) throw problems.notFound(`Console ${deviceId} is offline`)
+    if (conn.hello.kind !== 'console') throw problems.badRequest(`${deviceId} is not a console`)
+    this.send(conn, { type: 'simulateConsole', opId: randomUUID(), button })
+  }
+
+  // ---- operator consoles ---------------------------------------------------------------------
+
+  /**
+   * A button on an on-site console. The E-STOP has already latched every controller over
+   * the park network; here it is recorded like any e-stop. RUN and RESET are decided here,
+   * with the same checks as the studio, because starting motion needs every controller
+   * verified and the latch must be one state everywhere. Refusals go back to the display.
+   */
+  private async onConsole(conn: Connection, msg: ConsoleMsg): Promise<void> {
+    if (conn.hello.kind !== 'console') return
+    const envId = conn.hello.environmentId
+    const actor = { name: conn.hello.deviceId }
+    try {
+      if (msg.action === 'estop') await this.consoleLatched(conn)
+      else if (msg.action === 'reset') await this.resetEstop(envId, actor)
+      else {
+        const status = await this.environmentStatus(envId)
+        const show = status.prepared.find((p) => p.sha256 === msg.sha256)
+        if (!show) throw problems.conflict('Select a prepared show first')
+        await this.launch(show.showId, show.revision, actor)
+      }
+    } catch (err) {
+      if (!(err instanceof HttpProblem)) throw err
+      const reasons = err.extra.reasons?.length ? `: ${err.extra.reasons.join('; ')}` : ''
+      this.send(conn, { type: 'error', code: 'console-refused', message: `${err.message}${reasons}` })
+    }
+  }
+
+  /** Records a latch a console made on site (also when it happened while the cloud was unreachable). */
+  private async consoleLatched(conn: Connection): Promise<void> {
+    const envId = conn.hello.environmentId
+    // The button message and the next status report both say so; record it once.
+    if (this.latching.has(envId)) return
+    this.latching.add(envId)
+    try {
+      if ((await this.estopState(envId)).active) return
+      await this.estop(envId, `E-STOP pressed on ${conn.hello.deviceId}`, { name: conn.hello.deviceId })
+    } finally {
+      this.latching.delete(envId)
+    }
+  }
+
+  /** Sends each console in the environment(s) what its display shows, when it changed. */
+  private async pushPanels(environmentId?: string): Promise<void> {
+    const consoles = [...this.conns.values()].filter(
+      (c) => c.hello.kind === 'console' && (!environmentId || c.hello.environmentId === environmentId),
+    )
+    const envs = new Set(consoles.map((c) => c.hello.environmentId))
+    for (const envId of envs) {
+      try {
+        const status = await this.environmentStatus(envId)
+        const run = status.run && ['scheduled', 'running'].includes(status.run.status) ? status.run : null
+        const panel: PanelMsg = {
+          type: 'panel',
+          prepared: status.prepared.map(({ sha256, showId, revision, name, goodToGo }) => ({
+            sha256,
+            showId,
+            revision,
+            name,
+            goodToGo,
+          })),
+          run: run
+            ? {
+                sha256: run.sha256,
+                name: run.name,
+                revision: run.revision,
+                startAt: run.startAt,
+                durationMs: run.durationMs,
+              }
+            : null,
+          estop: { active: status.estop.active, by: status.estop.by, reason: status.estop.reason },
+        }
+        const json = JSON.stringify(panel)
+        for (const c of consoles) {
+          if (c.hello.environmentId !== envId || c.panel === json) continue
+          c.panel = json
+          this.send(c, panel)
+        }
+      } catch (err) {
+        this.log.error({ err, environmentId: envId }, 'console panel update failed')
+      }
+    }
   }
 
   async provision(environmentId: string): Promise<ProvisioningResponse> {

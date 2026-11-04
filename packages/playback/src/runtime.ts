@@ -2,6 +2,7 @@ import type {
   AudioCue,
   AudioPayload,
   BehaviorSchedule,
+  DevicePayload,
   DollPayload,
   LightPayload,
   SensorEvent,
@@ -190,6 +191,26 @@ export function audioEventsBetween(
     }
   }
   return events.sort((a, b) => a.at - b.at)
+}
+
+/**
+ * The attraction between shows. After a show completes, its standby responses keep
+ * answering guests: the same runtime with the main timeline emptied (figures rest at
+ * home, fixtures dark, no cues) and no show-time windows. Its clock starts when the
+ * show ends. Null when the show has no standby responses.
+ */
+export function standbyBundle(bundle: ShowBundle): ShowBundle | null {
+  const behaviors = bundle.behaviors.filter((b) => b.standby).map((b) => ({ ...b, window: null }))
+  if (behaviors.length === 0) return null
+  const devices = Object.fromEntries(
+    Object.entries(bundle.devices).map(([id, p]): [string, DevicePayload] => {
+      if (p.kind === 'doll') return [id, { ...p, motion: {} }]
+      if (p.kind === 'light') return [id, { ...p, keys: [] }]
+      if (p.kind === 'audio') return [id, { ...p, cues: [] }]
+      return [id, p]
+    }),
+  )
+  return { ...bundle, behaviors, devices }
 }
 
 export interface ShowFrame {

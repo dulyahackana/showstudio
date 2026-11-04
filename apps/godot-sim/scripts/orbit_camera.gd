@@ -38,6 +38,15 @@ func _unhandled_input(event: InputEvent) -> void:
 	_update()
 
 
+## Look at a point from a given yaw and pitch (radians); F still returns to the stage.
+func look_from(at: Vector3, from_distance: float, from_yaw: float, from_pitch: float) -> void:
+	target = at
+	distance = from_distance
+	yaw = from_yaw
+	pitch = from_pitch
+	_update()
+
+
 ## Ground-plane basis for moving things relative to the view.
 func planar_basis() -> Basis:
 	return Basis(Vector3.UP, yaw)

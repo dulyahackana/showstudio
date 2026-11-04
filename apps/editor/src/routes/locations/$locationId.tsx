@@ -45,6 +45,7 @@ function LocationPage() {
           lights: [],
           audio: [],
           sensors: [],
+          consoles: [],
           scenery: [],
         },
       },
@@ -73,7 +74,7 @@ function LocationPage() {
         }
       />
       <PageBody>
-        <Section title="Environments" description="Live state, the shows made for each, and their control rooms.">
+        <Section title="Attractions">
           <DocGrid
             count={envs.length}
             empty={{
@@ -82,7 +83,7 @@ function LocationPage() {
               description: 'Describe an attraction and every device installed in it.',
             }}
           >
-            <div className="col-span-full grid gap-6 2xl:grid-cols-2">
+            <div className="col-span-full grid gap-6 xl:grid-cols-2">
               {envs.map((e) => (
                 <LiveAttraction key={e.id} envId={e.id} />
               ))}

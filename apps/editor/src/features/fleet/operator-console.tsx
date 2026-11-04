@@ -1,4 +1,4 @@
-import { type PreparedShow, SENSOR_EVENTS } from '@studio/schema'
+import { environmentDevices, type PreparedShow, SENSOR_EVENTS, type SensorEvent } from '@studio/schema'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { OctagonX, Play, Radar, RefreshCw, Rocket, Square } from 'lucide-react'
@@ -74,7 +74,10 @@ export function OperatorConsole({ environmentId, focusShowId }: { environmentId:
   const runShow = useRevision<'show'>(run ? { id: run.showId, revision: run.revision } : null)
   const devices = mergeDevices(status)
   const online = devices.filter((d) => d.online).length
+  // After a show completes, controllers with standby responses keep answering guests until stopped.
+  const standby = !run && devices.some((d) => d.online && d.state === 'standby') ? status?.run : null
   const states = Object.fromEntries(devices.map((d) => [d.id, d.online ? d.state : ('offline' as const)]))
+  const names = new Map(layout.data ? environmentDevices(layout.data.content).map((d) => [d.deviceId, d.name]) : [])
   const refresh = () => qc.invalidateQueries({ queryKey: qk.envStatus(environmentId) })
   const prepared = [...(status?.prepared ?? [])].sort(
     (a, b) => Number(b.showId === focusShowId) - Number(a.showId === focusShowId),
@@ -180,193 +183,202 @@ export function OperatorConsole({ environmentId, focusShowId }: { environmentId:
         )}
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
-          <Panel className="flex flex-col overflow-hidden" data-testid="now-playing">
-            <div className="flex items-center justify-between border-b px-5 py-3">
-              <span className="text-eyebrow">Now playing</span>
-              {run ? (
-                startingIn !== null ? (
-                  <ToneBadge t="warn">armed</ToneBadge>
-                ) : (
-                  <ToneBadge t="info">running</ToneBadge>
-                )
-              ) : (
-                <ToneBadge t="muted">idle</ToneBadge>
-              )}
-            </div>
-            <div className="flex flex-1 flex-col justify-between gap-6 p-6">
-              <div>
-                <div className="text-3xl font-semibold tracking-tight">
-                  {run ? (
-                    <>
-                      {run.name} <span className="font-mono text-lg text-muted-foreground">· r{run.revision}</span>
-                    </>
+          <div className="space-y-6">
+            <Panel className="flex flex-col overflow-hidden" data-testid="now-playing">
+              <div className="flex items-center justify-between border-b px-5 py-3">
+                <span className="text-eyebrow">Now playing</span>
+                {run ? (
+                  startingIn !== null ? (
+                    <ToneBadge t="warn">armed</ToneBadge>
                   ) : (
-                    <span className="text-muted-foreground">Nothing running</span>
+                    <ToneBadge t="info">running</ToneBadge>
+                  )
+                ) : standby ? (
+                  <ToneBadge t="sensor">standby</ToneBadge>
+                ) : (
+                  <ToneBadge t="muted">idle</ToneBadge>
+                )}
+              </div>
+              <div className={cn('flex flex-1 flex-col justify-between', run || standby ? 'gap-6 p-6' : 'gap-3 p-5')}>
+                <div>
+                  <div className={cn('font-semibold tracking-tight', run || standby ? 'text-3xl' : 'text-xl')}>
+                    {run ? (
+                      <>
+                        {run.name} <span className="font-mono text-lg text-muted-foreground">· r{run.revision}</span>
+                      </>
+                    ) : standby ? (
+                      <span data-testid="standby">
+                        Standby <span className="text-lg text-muted-foreground">· {standby.name}</span>
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Nothing running</span>
+                    )}
+                  </div>
+                  {run && (
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      launched by <span className="capitalize">{run.launchedBy}</span>
+                    </div>
+                  )}
+                  {standby && (
+                    <div className="mt-1 max-w-md text-sm text-muted-foreground">
+                      The show has ended. Figures rest at home and still answer guests with its between-show responses.
+                    </div>
                   )}
                 </div>
                 {run && (
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    launched by <span className="capitalize">{run.launchedBy}</span>
+                  <div className="space-y-3">
+                    {startingIn !== null ? (
+                      <div className="font-mono text-5xl font-semibold text-warn tabular">
+                        T−{startingIn.toFixed(1)}
+                        <span className="ml-2 text-lg text-muted-foreground">s</span>
+                      </div>
+                    ) : (
+                      <div className="font-mono text-5xl font-semibold tabular">
+                        {formatMs(Math.max(0, elapsed), false)}
+                        <span className="text-2xl text-muted-foreground"> / {formatMs(run.durationMs, false)}</span>
+                      </div>
+                    )}
+                    <div className="rounded-lg border bg-sidebar px-3 py-2">
+                      {runShow.data ? (
+                        <ShowStrip
+                          show={runShow.data.content}
+                          progress={Math.max(0, elapsed) / run.durationMs}
+                          className="h-16"
+                        />
+                      ) : (
+                        <div className="h-16" />
+                      )}
+                    </div>
                   </div>
                 )}
-              </div>
-              {run && (
-                <div className="space-y-3">
-                  {startingIn !== null ? (
-                    <div className="font-mono text-5xl font-semibold text-warn tabular">
-                      T−{startingIn.toFixed(1)}
-                      <span className="ml-2 text-lg text-muted-foreground">s</span>
-                    </div>
+                {canOperate &&
+                  (run || standby ? (
+                    <Button
+                      size="lg"
+                      variant="secondary"
+                      className="self-start"
+                      disabled={stop.isPending}
+                      onClick={() => stop.mutate()}
+                      data-testid="stop"
+                    >
+                      <Square /> {run ? 'Stop show' : 'End standby'}
+                    </Button>
                   ) : (
-                    <div className="font-mono text-5xl font-semibold tabular">
-                      {formatMs(Math.max(0, elapsed), false)}
-                      <span className="text-2xl text-muted-foreground"> / {formatMs(run.durationMs, false)}</span>
-                    </div>
+                    <p className="text-sm text-muted-foreground">Launch one of the prepared shows below.</p>
+                  ))}
+              </div>
+            </Panel>
+
+            <section className="space-y-3">
+              <h2
+                className="text-sm font-semibold"
+                title="Staged and verified on every controller. Launch one, or swap at any time."
+              >
+                Prepared shows
+              </h2>
+              {!focusStaged && focusShowId && (
+                <div className="flex items-center gap-3 rounded-xl border border-dashed p-4 text-sm">
+                  <Rocket className="size-4 text-muted-foreground" />
+                  <span className="flex-1 text-muted-foreground">
+                    This show is not staged on {layout.data?.content.name ?? environmentId} yet.
+                  </span>
+                  {canDeploy(focusShowId) && (
+                    <Button size="sm" variant="outline" asChild>
+                      <Link to="/projects/$projectId/deploy" params={{ projectId: focusShowId }}>
+                        Go to Deploy
+                      </Link>
+                    </Button>
                   )}
-                  <div className="rounded-lg border bg-sidebar px-3 py-2">
-                    {runShow.data ? (
-                      <ShowStrip
-                        show={runShow.data.content}
-                        progress={Math.max(0, elapsed) / run.durationMs}
-                        className="h-16"
-                      />
-                    ) : (
-                      <div className="h-16" />
-                    )}
-                  </div>
                 </div>
               )}
-              {canOperate &&
-                (run ? (
-                  <Button
-                    size="lg"
-                    variant="secondary"
-                    className="self-start"
-                    disabled={stop.isPending}
-                    onClick={() => stop.mutate()}
-                    data-testid="stop"
-                  >
-                    <Square /> Stop show
-                  </Button>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Launch a prepared show below. Every controller starts together a few seconds after you confirm.
-                  </p>
+              <div className="grid gap-4 2xl:grid-cols-2">
+                {prepared.map((p) => (
+                  <PreparedCard
+                    key={p.sha256}
+                    show={p}
+                    focused={p.showId === focusShowId}
+                    running={run?.sha256 === p.sha256}
+                    swapping={!!run && run.sha256 !== p.sha256}
+                    canLaunch={canLaunch(p.showId)}
+                    disabled={!p.goodToGo || estopActive || run?.sha256 === p.sha256 || launch.isPending}
+                    onLaunch={() => {
+                      setZoneClear(false)
+                      setLaunching(p)
+                    }}
+                  />
                 ))}
-            </div>
-          </Panel>
-
-          <Panel className="flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between border-b px-5 py-3">
-              <span className="text-eyebrow">Attraction · live</span>
-              <span className="text-[11px] text-muted-foreground">main timeline · responses decided on site</span>
-            </div>
-            <div className="bg-blueprint relative min-h-72 flex-1 bg-sidebar/70">
-              {layout.data && (
-                <FloorPlan
-                  env={layout.data.content}
-                  characters={characters}
-                  lights={frame?.lights}
-                  states={states}
-                  labels
-                  className="absolute inset-0 p-5"
-                />
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-px border-t bg-border sm:grid-cols-5">
-              {devices.map((d) => {
-                const key = d.online ? d.state : 'offline'
-                return (
-                  <div
-                    key={d.id}
-                    className="flex items-center gap-2 bg-card px-3 py-2"
-                    title={`${d.id}: ${STATE_STYLE[key].label}`}
-                  >
-                    <KindIcon kind={d.kind} className="size-3.5" />
-                    <span className="min-w-0 flex-1 truncate font-mono text-[11px]">{d.id}</span>
-                    <StatusDot state={key} />
-                  </div>
-                )
-              })}
-            </div>
-          </Panel>
-        </div>
-
-        <section className="space-y-3">
-          <div className="flex items-end justify-between">
-            <div>
-              <h2 className="text-sm font-semibold">Prepared shows</h2>
-              <p className="text-xs text-muted-foreground">
-                Staged and verified on every controller. Launch one, or swap at any time.
-              </p>
-            </div>
+                {status && status.prepared.length === 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    No shows staged. Deploy an approved show from its project (step 3, Deploy).
+                  </p>
+                )}
+              </div>
+            </section>
           </div>
-          {!focusStaged && focusShowId && (
-            <div className="flex items-center gap-3 rounded-xl border border-dashed p-4 text-sm">
-              <Rocket className="size-4 text-muted-foreground" />
-              <span className="flex-1 text-muted-foreground">
-                This show is not staged on {layout.data?.content.name ?? environmentId} yet.
-              </span>
-              {canDeploy(focusShowId) && (
-                <Button size="sm" variant="outline" asChild>
-                  <Link to="/projects/$projectId/deploy" params={{ projectId: focusShowId }}>
-                    Go to Deploy
-                  </Link>
-                </Button>
-              )}
-            </div>
-          )}
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-            {prepared.map((p) => (
-              <PreparedCard
-                key={p.sha256}
-                show={p}
-                focused={p.showId === focusShowId}
-                running={run?.sha256 === p.sha256}
-                swapping={!!run && run.sha256 !== p.sha256}
-                canLaunch={canLaunch(p.showId)}
-                disabled={!p.goodToGo || estopActive || run?.sha256 === p.sha256 || launch.isPending}
-                onLaunch={() => {
-                  setZoneClear(false)
-                  setLaunching(p)
-                }}
-              />
-            ))}
-            {status && status.prepared.length === 0 && (
-              <p className="text-sm text-muted-foreground">
-                No shows staged. Deploy an approved show from its project (step 3, Deploy).
-              </p>
+          <div className="space-y-6">
+            <Panel className="flex flex-col overflow-hidden">
+              <div className="flex items-center justify-between border-b px-5 py-3">
+                <span className="text-eyebrow">Attraction · live</span>
+                <span className="text-[11px] text-muted-foreground">main timeline · responses decided on site</span>
+              </div>
+              <div className="bg-blueprint relative min-h-80 flex-1 bg-sidebar/70 xl:min-h-[26rem]">
+                {layout.data && (
+                  <FloorPlan
+                    env={layout.data.content}
+                    characters={characters}
+                    lights={frame?.lights}
+                    states={states}
+                    labels
+                    className="absolute inset-0 p-5"
+                  />
+                )}
+              </div>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))] gap-px border-t bg-border">
+                {devices.map((d) => {
+                  const key = d.online ? d.state : 'offline'
+                  return (
+                    <div
+                      key={d.id}
+                      className="flex items-center gap-2 bg-card px-3 py-2"
+                      title={`${names.get(d.id) ?? d.id} (${d.id}): ${STATE_STYLE[key].label}`}
+                    >
+                      <KindIcon kind={d.kind} className="size-3.5" />
+                      <span className="min-w-0 flex-1 truncate text-xs">{names.get(d.id) ?? d.id}</span>
+                      <StatusDot state={key} />
+                    </div>
+                  )
+                })}
+              </div>
+            </Panel>
+            {canSimulate && layout.data && layout.data.content.sensors.length > 0 && (
+              <section className="space-y-3">
+                <h2
+                  className="text-sm font-semibold"
+                  title="Makes a sensor fire on site. The park's local show controller decides the reaction."
+                >
+                  Guest simulation
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {layout.data.content.sensors.flatMap((s) =>
+                    SENSOR_EVENTS[s.type].map((ev) => (
+                      <Button
+                        key={`${s.deviceId}-${ev}`}
+                        variant="outline"
+                        size="sm"
+                        className="border-sensor/30 text-sensor hover:bg-sensor/10 hover:text-sensor"
+                        disabled={!devices.find((d) => d.id === s.deviceId)?.online}
+                        onClick={() => simulate.mutate({ deviceId: s.deviceId, event: ev })}
+                        data-testid={`sensor-${s.deviceId}-${ev}`}
+                      >
+                        <Radar /> {SENSOR_EVENT_LABEL[ev]} · {s.name}
+                      </Button>
+                    )),
+                  )}
+                </div>
+              </section>
             )}
           </div>
-        </section>
-
-        {canSimulate && layout.data && layout.data.content.sensors.length > 0 && (
-          <section className="space-y-3">
-            <div>
-              <h2 className="text-sm font-semibold">Guest simulation</h2>
-              <p className="text-xs text-muted-foreground">
-                Makes a sensor fire on site. The park's local show controller decides the reaction.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {layout.data.content.sensors.flatMap((s) =>
-                SENSOR_EVENTS[s.type].map((ev) => (
-                  <Button
-                    key={`${s.deviceId}-${ev}`}
-                    variant="outline"
-                    size="sm"
-                    className="border-sensor/30 text-sensor hover:bg-sensor/10 hover:text-sensor"
-                    disabled={!devices.find((d) => d.id === s.deviceId)?.online}
-                    onClick={() => simulate.mutate({ deviceId: s.deviceId, event: ev })}
-                    data-testid={`sensor-${s.deviceId}-${ev}`}
-                  >
-                    <Radar /> {s.name} · {ev}
-                  </Button>
-                )),
-              )}
-            </div>
-          </section>
-        )}
+        </div>
       </div>
 
       <AlertDialog open={!!launching} onOpenChange={(o) => !o && setLaunching(null)}>
@@ -480,4 +492,10 @@ function PreparedCard({
       )}
     </Panel>
   )
+}
+
+const SENSOR_EVENT_LABEL: Record<SensorEvent, string> = {
+  enter: 'Guest walks in',
+  exit: 'Guest walks out',
+  press: 'Guest presses',
 }

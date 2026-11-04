@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { CharacterDefinition } from './character.ts'
 import { DocRef, Id, Revision, Role, Sha256, Timestamp } from './common.ts'
 import { EnvironmentDefinition } from './environment.ts'
-import { ActiveShow, DeviceKind, DeviceState, StagedShow } from './protocol.ts'
+import { ActiveShow, ConsoleButton, DeviceKind, DeviceState, StagedShow } from './protocol.ts'
 import { ShowDefinition } from './show.ts'
 
 // ---- auth -------------------------------------------------------------------
@@ -145,6 +145,10 @@ export const PublishRequest = z
 
 export const ReviewRequest = z.object({ note: z.string().max(500) }).meta({ id: 'ReviewRequest' })
 
+export const RestoreRequest = z
+  .object({ draftVersion: z.number().int().describe('The draft being replaced (optimistic concurrency)') })
+  .meta({ id: 'RestoreRequest' })
+
 // ---- validation & errors -------------------------------------------------------
 
 export const Issue = z
@@ -262,6 +266,10 @@ export const EnvironmentCommand = z
 export const SimulateSensorRequest = z
   .object({ environmentId: Id, event: z.enum(['enter', 'exit', 'press']) })
   .meta({ id: 'SimulateSensorRequest' })
+
+export const SimulateConsoleRequest = z
+  .object({ environmentId: Id, button: ConsoleButton })
+  .meta({ id: 'SimulateConsoleRequest' })
 
 export const PreparedShow = z
   .object({

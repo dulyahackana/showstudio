@@ -60,6 +60,20 @@ export const Sensor = z
   .meta({ id: 'Sensor' })
 export type Sensor = z.infer<typeof Sensor>
 
+export const OperatorConsole = z
+  .object({
+    deviceId: Id,
+    name: z.string().min(1),
+    position: Vec3.describe('Floor point under the pedestal'),
+    rotationY: z.number().describe('Yaw in degrees; at 0 the operator stands on +Z, facing the stage (-Z)'),
+  })
+  .meta({
+    id: 'OperatorConsole',
+    description:
+      'On-site control panel. Its E-STOP latches every controller over the park network without the cloud; RUN, select and RESET go through the fleet manager',
+  })
+export type OperatorConsole = z.infer<typeof OperatorConsole>
+
 export const KeepOutZone = z
   .object({ name: z.string().min(1), box: Box })
   .meta({ id: 'KeepOutZone', description: 'Guest area or walkway no figure footprint may reach' })
@@ -96,12 +110,13 @@ export const EnvironmentDefinition = z
     lights: z.array(LightFixture),
     audio: z.array(AudioZone),
     sensors: z.array(Sensor),
+    consoles: z.array(OperatorConsole).default([]).describe('Operator control panels with RUN and E-STOP'),
     scenery: z.array(SceneryItem).default([]).describe('Set dressing for previews and digital twins'),
   })
   .meta({ id: 'EnvironmentDefinition' })
 export type EnvironmentDefinition = z.infer<typeof EnvironmentDefinition>
 
-export type EnvironmentDeviceKind = 'doll' | 'light' | 'audio' | 'sensor'
+export type EnvironmentDeviceKind = 'doll' | 'light' | 'audio' | 'sensor' | 'console'
 
 /** Every device the attraction contains, in a stable order. */
 export function environmentDevices(
@@ -112,5 +127,7 @@ export function environmentDevices(
     ...env.lights.map((l) => ({ deviceId: l.deviceId, kind: 'light' as const, name: l.name })),
     ...env.audio.map((a) => ({ deviceId: a.deviceId, kind: 'audio' as const, name: a.name })),
     ...env.sensors.map((s) => ({ deviceId: s.deviceId, kind: 'sensor' as const, name: s.name })),
+    // Revisions published before consoles existed have no list at all.
+    ...(env.consoles ?? []).map((c) => ({ deviceId: c.deviceId, kind: 'console' as const, name: c.name })),
   ]
 }

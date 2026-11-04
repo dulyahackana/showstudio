@@ -57,7 +57,7 @@ function CharactersPage() {
       <PageHeader
         eyebrow={`Library · ${data.length} figures`}
         title="Characters"
-        description="Each mechatronic figure: its 3D model, joints, ranges of motion and maximum speeds. Shared by every environment and project."
+        description="Figures with their joints, limits and speeds."
         actions={
           canCreate && (
             <NewDocumentDialog<Files>

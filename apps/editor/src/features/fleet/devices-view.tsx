@@ -150,7 +150,7 @@ export function DevicesView({
               Devices ({online}/{devices.length} online)
             </span>
             <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-              {(['ready', 'running', 'estopped', 'offline'] as const).map((st) => (
+              {(['ready', 'running', 'standby', 'estopped', 'offline'] as const).map((st) => (
                 <span key={st} className="inline-flex items-center gap-1.5">
                   <StatusDot state={st} /> {STATE_STYLE[st].label}
                 </span>

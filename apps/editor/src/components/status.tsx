@@ -10,6 +10,8 @@ const tone = {
   warn: 'border-warn/25 bg-warn/10 text-warn',
   bad: 'border-danger/30 bg-danger/10 text-danger',
   info: 'border-motion/25 bg-motion/10 text-motion',
+  review: 'border-review/30 bg-review/10 text-review',
+  sensor: 'border-sensor/25 bg-sensor/10 text-sensor',
   muted: 'border-border bg-muted/40 text-muted-foreground',
 } as const
 
@@ -30,8 +32,8 @@ export function ToneBadge({
 }
 
 export function RevisionBadge({ status }: { status: RevisionStatus }) {
-  const t = status === 'approved' ? 'ok' : status === 'rejected' ? 'bad' : 'info'
-  const label = status === 'published' ? 'awaiting review' : status
+  const t = status === 'approved' ? 'ok' : status === 'rejected' ? 'bad' : 'review'
+  const label = status === 'published' ? 'in review' : status
   return <ToneBadge t={t}>{label}</ToneBadge>
 }
 

@@ -35,6 +35,8 @@ interface ProjectRow {
   id: string
   created_at: Date
   created_by: string
+  deleted_at: Date | null
+  deleted_by: string | null
 }
 
 /**
@@ -42,6 +44,8 @@ interface ProjectRow {
  * project, writes need a role that grants the permission (PROJECT_PERMISSIONS).
  * Non-members get 404, so show names do not leak. Library characters and location
  * environments belong to no project: the workspace roles in the contract govern them.
+ * A deleted project is only hidden: its members can still read it, nobody can change it
+ * until an owner or admin recovers it.
  */
 export class ProjectService {
   constructor(
@@ -58,17 +62,30 @@ export class ProjectService {
     return row?.role ?? null
   }
 
-  /** Throws 404 (not a member) or 403 (role too weak); admins always pass. */
-  async require(user: User, projectId: string, permission: ProjectPermission, db: Db = this.db): Promise<void> {
+  /**
+   * Throws 404 (not a member), 403 (role too weak) or 409 (deleted, for anything but
+   * reading); admins pass the role checks.
+   */
+  async require(
+    user: User,
+    projectId: string,
+    permission: ProjectPermission,
+    db: Db = this.db,
+    opts: { allowDeleted?: boolean } = {},
+  ): Promise<void> {
+    const [project] = await db.query<{ deleted_at: Date | null }>('select deleted_at from projects where id = $1', [
+      projectId,
+    ])
     if (isAdmin(user)) {
-      const [exists] = await db.query('select 1 from projects where id = $1', [projectId])
-      if (!exists) throw problems.notFound(`Project "${projectId}" does not exist`)
-      return
+      if (!project) throw problems.notFound(`Project "${projectId}" does not exist`)
+    } else {
+      const role = project ? await this.roleOf(user, projectId, db) : null
+      if (!role) throw problems.notFound(`Project "${projectId}" does not exist or you are not a member`)
+      if (!projectAllows(role, permission))
+        throw problems.forbidden(`Your role in "${projectId}" (${role}) does not allow ${permission}`)
     }
-    const role = await this.roleOf(user, projectId, db)
-    if (!role) throw problems.notFound(`Project "${projectId}" does not exist or you are not a member`)
-    if (!projectAllows(role, permission))
-      throw problems.forbidden(`Your role in "${projectId}" (${role}) does not allow ${permission}`)
+    if (project?.deleted_at && permission !== 'read' && !opts.allowDeleted)
+      throw problems.conflict(`Project "${projectId}" is deleted; recover it first`)
   }
 
   /** Permission check for an action on a document (404 if it does not exist or is not visible). */
@@ -83,25 +100,24 @@ export class ProjectService {
     })
   }
 
-  /** Project ids the user can read (null = all, for admins). */
-  async visibleProjectIds(user: User): Promise<string[] | null> {
-    if (isAdmin(user)) return null
-    const rows = await this.db.query<{ project_id: string }>(
-      'select project_id from project_members where user_name = $1',
-      [user.name],
+  /** Projects the user is listed for: members see theirs, admins see all. Deleted ones only on request. */
+  private async rows(user: User, status: 'active' | 'deleted'): Promise<ProjectRow[]> {
+    const member = isAdmin(user) ? '' : 'and p.id in (select project_id from project_members where user_name = $1)'
+    return this.db.query<ProjectRow>(
+      `select p.* from projects p join documents d on d.id = p.id
+       where (p.deleted_at is null) = ${status === 'active'} ${member}
+       order by ${status === 'active' ? 'd.name' : 'p.deleted_at desc'}`,
+      isAdmin(user) ? [] : [user.name],
     )
-    return rows.map((r) => r.project_id)
   }
 
-  async list(user: User): Promise<Project[]> {
-    const visible = await this.visibleProjectIds(user)
-    const rows = visible
-      ? await this.db.query<ProjectRow>(
-          'select p.* from projects p join documents d on d.id = p.id where p.id = any($1) order by d.name',
-          [visible],
-        )
-      : await this.db.query<ProjectRow>('select p.* from projects p join documents d on d.id = p.id order by d.name')
-    return Promise.all(rows.map((r) => this.toProject(r, user)))
+  /** Ids of the projects whose shows appear in document lists (deleted ones never do). */
+  async visibleProjectIds(user: User): Promise<string[]> {
+    return (await this.rows(user, 'active')).map((r) => r.id)
+  }
+
+  async list(user: User, status: 'active' | 'deleted' = 'active'): Promise<Project[]> {
+    return Promise.all((await this.rows(user, status)).map((r) => this.toProject(r, user)))
   }
 
   async get(projectId: string, user: User): Promise<Project> {
@@ -114,8 +130,15 @@ export class ProjectService {
   /** Creates the project and its show together; the creator becomes the owner. */
   async create(input: { id: string; draft: ShowDefinition }, user: User): Promise<Project> {
     await this.db.transaction(async (tx) => {
-      const [exists] = await tx.query('select 1 from projects where id = $1', [input.id])
-      if (exists) throw problems.conflict(`A project with id "${input.id}" already exists`)
+      const [exists] = await tx.query<{ deleted_at: Date | null }>('select deleted_at from projects where id = $1', [
+        input.id,
+      ])
+      if (exists)
+        throw problems.conflict(
+          exists.deleted_at
+            ? `A deleted project uses the id "${input.id}"; recover it or choose another id`
+            : `A project with id "${input.id}" already exists`,
+        )
       if (!(await this.studio.revisionContent(input.draft.environment, tx)))
         throw problems.badRequest(
           `Environment ${input.draft.environment.id}@${input.draft.environment.revision} is not published`,
@@ -164,6 +187,29 @@ export class ProjectService {
     return this.get(projectId, user)
   }
 
+  /** Soft delete: hidden and read-only; the caller takes the show off the controllers. */
+  async delete(projectId: string, user: User): Promise<Project> {
+    await this.db.transaction(async (tx) => {
+      await this.require(user, projectId, 'manage', tx)
+      await tx.query('update projects set deleted_at = now(), deleted_by = $2 where id = $1', [projectId, user.name])
+      await this.audit.append(user.name, 'project.delete', 'project', projectId, {}, tx)
+    })
+    return this.get(projectId, user)
+  }
+
+  async restore(projectId: string, user: User): Promise<Project> {
+    await this.db.transaction(async (tx) => {
+      await this.require(user, projectId, 'manage', tx, { allowDeleted: true })
+      const [row] = await tx.query<{ deleted_at: Date | null }>('select deleted_at from projects where id = $1', [
+        projectId,
+      ])
+      if (!row?.deleted_at) throw problems.conflict(`Project "${projectId}" is not deleted`)
+      await tx.query('update projects set deleted_at = null, deleted_by = null where id = $1', [projectId])
+      await this.audit.append(user.name, 'project.restore', 'project', projectId, {}, tx)
+    })
+    return this.get(projectId, user)
+  }
+
   /** A project always keeps at least one owner. */
   private async assertAnotherOwner(projectId: string, member: string, tx: Db): Promise<void> {
     const owners = await tx.query<{ user_name: string }>(
@@ -191,6 +237,8 @@ export class ProjectService {
       createdBy: row.created_by,
       myRole: members.find((m) => m.user_name === user.name)?.role ?? null,
       members: members.map((m) => ({ user: m.user_name, role: m.role, addedBy: m.added_by, addedAt: iso(m.added_at) })),
+      deletedAt: row.deleted_at ? iso(row.deleted_at) : null,
+      deletedBy: row.deleted_by,
     }
   }
 }

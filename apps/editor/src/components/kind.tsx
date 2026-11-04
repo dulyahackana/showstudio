@@ -1,11 +1,11 @@
 import type { DeviceKind, DeviceState } from '@studio/schema'
-import { Bot, Lightbulb, Radar, Volume2 } from 'lucide-react'
+import { Bot, Joystick, Lightbulb, Radar, Volume2 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 
 /**
  * One colour and icon per device kind, used everywhere (timeline, 3D, floor plans,
- * fleet, badges), so a figure, a light, a speaker and a sensor read the same on every screen.
+ * fleet, badges), so a figure, a light, a speaker, a sensor and a console read the same on every screen.
  */
 export const KIND = {
   doll: {
@@ -44,6 +44,15 @@ export const KIND = {
     dot: 'bg-sensor',
     hex: '#f472b6',
   },
+  console: {
+    label: 'Console',
+    plural: 'Consoles',
+    icon: Joystick,
+    text: 'text-sky-300',
+    soft: 'bg-sky-300/10 border-sky-300/25',
+    dot: 'bg-sky-300',
+    hex: '#7dd3fc',
+  },
 } as const satisfies Record<DeviceKind, unknown>
 
 export const ACCENT = '#34d399'
@@ -74,6 +83,7 @@ export const STATE_STYLE: Record<
   ready: { dot: 'bg-ok', text: 'text-ok', label: 'ready' },
   armed: { dot: 'bg-warn', text: 'text-warn', pulse: true, label: 'armed' },
   running: { dot: 'bg-motion', text: 'text-motion', pulse: true, label: 'running' },
+  standby: { dot: 'bg-sensor', text: 'text-sensor', label: 'standby' },
   estopped: { dot: 'bg-danger', text: 'text-danger', label: 'e-stopped' },
   faulted: { dot: 'bg-danger', text: 'text-danger', label: 'faulted' },
   offline: { dot: 'border border-muted-foreground/60 bg-transparent', text: 'text-muted-foreground', label: 'offline' },

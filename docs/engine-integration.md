@@ -21,7 +21,7 @@ flowchart LR
   subgraph Godot["Godot process = one attraction"]
     P["main.gd<br/>provision, build stage"] --> D["sim_device.gd × N<br/>own WebSocket + identity"]
     D -- "run / behaviorStart" --- B["show_bus.gd<br/>local show controller"]
-    A["attraction.gd<br/>stage, figures, lights, speakers,<br/>sensor zones, walkable guest"] -- "sensor events" --> D
+    A["attraction.gd<br/>stage, figures, lights, speakers,<br/>sensor zones, console, walkable guest"] -- "sensor events, console buttons" --> D
     D -- "pose, light, cues" --> A
   end
   D <-- "device protocol (WS)" --> F["Fleet gateway"]
@@ -35,6 +35,7 @@ flowchart LR
 4. **Deploy.** Download the bundle, check `sha256`, verify the RSA-SHA256 signature with the pinned key, validate it against [`contracts/json-schema/ShowBundle.json`](../contracts/json-schema/ShowBundle.json), check that this device's payload exists, is the right kind and pins the definition the controller runs, re-validate motion against the controller's **own** limits, and fetch and verify the audio. Write it atomically, then report `staged`. Any failure is reported as `rejected` with the reason.
 5. **Launch.** Start at `startAt − offset` and sample the runtime every frame from the local copy; the cloud can disappear mid-show. `stop` returns to ready; `estop` latches until `reset`. Audio controllers clamp every cue to their own ceiling.
 6. **Sensors.** Walking the guest into a presence zone (WASD), clicking a sensor, the number keys, or the studio's "Simulate guest" button all fire the sensor's controller. Its event goes to the local show controller, which runs the scheduler and broadcasts `behaviorStart` to the devices involved. The cloud only gets `sensorEvent` telemetry.
+7. **Operator console.** The layout's console is a 3D panel with a stack light: click its buttons, or use Enter (RUN), N (next show), Space (E-STOP; again to twist it out), R (RESET) and C (look at the console; F returns). Its E-STOP latches every controller over the local bus before telling the fleet manager; RUN and RESET are sent as `console` messages and decided by the fleet manager. The display and the overlay show the `panel` state the fleet manager sends ([ADR 12](adr/0012-operator-console.md)).
 
 | File                                                            | Ported from                                          | Role                                                           |
 | --------------------------------------------------------------- | ---------------------------------------------------- | -------------------------------------------------------------- |
@@ -49,7 +50,7 @@ flowchart LR
 
 ## How we know it matches
 
-- **Conformance vectors** ([`test-vectors/`](../test-vectors)) are generated from the TypeScript implementation and replayed by [`tests/run_tests.gd`](../apps/godot-sim/tests/run_tests.gd): motion and light sampling, whole-show frames with a sensor response, audio cue timing, scheduler decisions, the device-side limit check (which error codes each bad payload raises), RSA signature interop, and JSON Schema validation of bundles and fleet messages. A mutation check (breaking the easing or the range check) makes the suite fail.
+- **Conformance vectors** ([`test-vectors/`](../test-vectors)) are generated from the TypeScript implementation and replayed by [`tests/run_tests.gd`](../apps/godot-sim/tests/run_tests.gd): motion and light sampling, whole-show frames with a sensor response, audio cue timing, scheduler decisions, the standby bundle, the device-side limit check (which error codes each bad payload raises), RSA signature interop, and JSON Schema validation of bundles and fleet messages. A mutation check (breaking the easing or the range check) makes the suite fail.
 - **End to end** ([`scripts/godot-e2e.ts`](../scripts/godot-e2e.ts)): a fresh studio and seed, Godot headless as the attraction, then through the public API: nine controllers online, deploy and good to go, launch and running, figures moving, cues playing, the door sensor starting `notice-guest` locally, e-stop latched, reset. Both run in CI (`godot` job).
 
 ## Pose application

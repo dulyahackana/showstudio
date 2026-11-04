@@ -97,7 +97,7 @@ function AssetsPage() {
       <PageHeader
         eyebrow="Library"
         title="Assets"
-        description="Content-addressed 3D models and audio. Files are identified by their bytes, so re-uploads are deduplicated and devices verify what they download."
+        description="3D models and audio. Identified by their bytes, so devices can verify every download."
         actions={
           canUpload && (
             <Button size="sm" disabled={upload.isPending} asChild>

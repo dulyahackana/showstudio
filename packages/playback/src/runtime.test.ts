@@ -2,8 +2,16 @@ import { describe, expect, it } from 'bun:test'
 import type { BehaviorSchedule } from '@studio/schema'
 import { canonicalJson } from './canonical.ts'
 import { compileBundle } from './compile.ts'
+import { diffShows } from './diff.ts'
 import { characters, lab, makeShow } from './fixtures.ts'
-import { activeBehaviorFor, audioEventsBetween, BehaviorScheduler, sampleDollPose, sampleFrame } from './runtime.ts'
+import {
+  activeBehaviorFor,
+  audioEventsBetween,
+  BehaviorScheduler,
+  sampleDollPose,
+  sampleFrame,
+  standbyBundle,
+} from './runtime.ts'
 
 const compile = (show = makeShow()) =>
   compileBundle({
@@ -118,5 +126,45 @@ describe('sampleFrame', () => {
     expect(frame.activeBehaviors).toEqual(['wave'])
     expect(Object.keys(frame.poses)).toEqual(['robot-01'])
     expect(frame.lights['light-01']?.intensity).toBeGreaterThan(0)
+  })
+})
+
+describe('standbyBundle', () => {
+  const standbyShow = () => {
+    const show = makeShow()
+    const wave = show.behaviors[0]
+    if (wave) Object.assign(wave, { standby: true, window: { fromMs: 0, toMs: 100 } })
+    return show
+  }
+
+  it('is null without standby responses', () => {
+    expect(standbyBundle(compile())).toBeNull()
+  })
+
+  it('rests at home and dark, plays responses from home and back, ignores show windows', () => {
+    const bundle = standbyBundle(compile(standbyShow()))
+    if (!bundle) throw new Error('expected a standby bundle')
+    expect(bundle.behaviors).toEqual([expect.objectContaining({ id: 'wave', standby: true, window: null })])
+    const idle = sampleFrame(bundle, 60_000, [])
+    expect(idle.poses['robot-01']).toEqual({ head_yaw: 0, arm_pitch: 0 })
+    expect(idle.lights['light-01']?.intensity).toBe(0)
+
+    const started = [{ id: 'wave', startAt: 1000 }]
+    // blend 3000, then the clip: 1000 ms in, arm_pitch is at its 60° key
+    expect(sampleFrame(bundle, 1000 + 3000 + 1000, started).poses['robot-01']?.arm_pitch).toBeCloseTo(60)
+    // blend 3000 + clip 2000 + blend back 3000: home again
+    expect(sampleFrame(bundle, 1000 + 8000, started).poses['robot-01']?.arm_pitch).toBe(0)
+
+    const audio = bundle.devices['audio-01']
+    if (audio?.kind !== 'audio') throw new Error('expected audio')
+    const cues = audioEventsBetween(audio, bundle, -1, 60_000, started)
+    expect(cues.map((e) => [e.cue.id, e.at])).toEqual([['hello', 1000 + 3000 + 500]])
+  })
+
+  it('is called out on its own in the review diff', () => {
+    const changes = diffShows(makeShow(), standbyShow())
+    expect(changes).toContainEqual(
+      expect.objectContaining({ area: 'behaviors', detail: 'now also answers guests between shows' }),
+    )
   })
 })

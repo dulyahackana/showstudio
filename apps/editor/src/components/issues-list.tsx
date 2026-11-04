@@ -48,7 +48,12 @@ export function IssuesList({ issues, onSelect }: { issues: Issue[]; onSelect?: (
 export function IssueCounts({ issues }: { issues: Issue[] }) {
   const errors = issues.filter((i) => i.severity === 'error').length
   const warnings = issues.length - errors
-  if (!issues.length) return <CircleCheck className="size-3.5 text-ok" />
+  if (!issues.length)
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-ok" title="The draft passes every validation check">
+        <CircleCheck className="size-3.5" /> No issues
+      </span>
+    )
   return (
     <span className="inline-flex items-center gap-1.5 text-xs">
       {errors > 0 && (

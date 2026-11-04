@@ -14,12 +14,52 @@ import { useNow } from '@/hooks/use-now'
 import { formatMs } from '@/lib/format'
 import { useProjectStage, useProjects } from '@/lib/project'
 import { envStatusQuery, useCharacters, useRevision } from '@/lib/queries'
+import { useCan } from '@/lib/session'
 
 /**
  * One environment, live: floor plan with the lights as they are now, what is playing,
  * controllers online, shows staged, and the projects made for it.
  */
+type ButtonVariant = 'default' | 'outline'
+
+function ControlRoomButton({
+  envId,
+  className,
+  variant = 'default',
+}: {
+  envId: string
+  className?: string
+  variant?: ButtonVariant
+}) {
+  return (
+    <Button size="sm" variant={variant} className={className} asChild>
+      <Link to="/environments/$id/operate" params={{ id: envId }} data-testid={`operate-${envId}`}>
+        <Play /> Control room
+      </Link>
+    </Button>
+  )
+}
+
+function LayoutButton({
+  envId,
+  className,
+  variant = 'default',
+}: {
+  envId: string
+  className?: string
+  variant?: ButtonVariant
+}) {
+  return (
+    <Button size="sm" variant={variant} className={className} asChild>
+      <Link to="/environments/$id" params={{ id: envId }}>
+        <MapIcon /> Layout
+      </Link>
+    </Button>
+  )
+}
+
 export function LiveAttraction({ envId }: { envId: string }) {
+  const operator = useCan('launch')
   const { data: status, dataUpdatedAt: updatedAt } = useQuery(envStatusQuery(envId))
   const now = useNow(250)
   const serverNow = now + (status ? status.serverTime - updatedAt : 0)
@@ -35,7 +75,7 @@ export function LiveAttraction({ envId }: { envId: string }) {
   const elapsed = run ? Math.max(0, Math.min(run.durationMs, serverNow - run.startAt)) : 0
 
   return (
-    <Panel className="flex flex-col overflow-hidden">
+    <Panel className="@container flex flex-col overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b px-5 py-3">
         <div className="flex items-center gap-2.5">
           <StatusDot state={latched ? 'estopped' : run ? 'running' : 'ready'} />
@@ -54,8 +94,8 @@ export function LiveAttraction({ envId }: { envId: string }) {
           <ToneBadge t="muted">idle</ToneBadge>
         )}
       </div>
-      <div className="grid flex-1 md:grid-cols-[minmax(0,1fr)_260px]">
-        <div className="bg-blueprint relative min-h-72 bg-sidebar/60 p-4">
+      <div className="grid flex-1 @2xl:grid-cols-[minmax(0,1fr)_260px]">
+        <div className="bg-blueprint relative min-h-64 bg-sidebar/60 p-4 @2xl:min-h-72">
           {env.data && (
             <FloorPlan
               env={env.data.content}
@@ -67,7 +107,7 @@ export function LiveAttraction({ envId }: { envId: string }) {
             />
           )}
         </div>
-        <div className="flex flex-col gap-5 border-l p-5">
+        <div className="grid gap-4 border-t p-4 @md:grid-cols-2 @2xl:flex @2xl:flex-col @2xl:gap-5 @2xl:border-t-0 @2xl:border-l @2xl:p-5">
           <div>
             <div className="text-eyebrow">Now playing</div>
             {run ? (
@@ -92,19 +132,23 @@ export function LiveAttraction({ envId }: { envId: string }) {
             value={`${devices.filter((d) => d.online).length}/${devices.length}`}
             hint={devices.some((d) => !d.online) ? `${devices.filter((d) => !d.online).length} offline` : 'all online'}
           />
-          <ProjectsFor envId={envId} />
-          <div className="mt-auto flex flex-wrap gap-2">
-            <Button size="sm" variant={run ? 'outline' : 'default'} asChild>
-              <Link to="/environments/$id/operate" params={{ id: envId }} data-testid={`operate-${envId}`}>
-                <Play /> Control room
-              </Link>
-            </Button>
-            <Button size="sm" variant="ghost" asChild>
-              <Link to="/environments/$id" params={{ id: envId }}>
-                <MapIcon /> Layout
-              </Link>
-            </Button>
-            <Button size="sm" variant="ghost" asChild>
+          <div className="@md:col-span-2">
+            <ProjectsFor envId={envId} />
+          </div>
+          {/* The first action is the one this person came for: operators run, engineers lay out. */}
+          <div className="mt-auto grid grid-cols-2 gap-1.5 @md:col-span-2 @md:grid-cols-3 @2xl:grid-cols-2">
+            {operator ? (
+              <>
+                <ControlRoomButton envId={envId} className="col-span-2 @md:col-span-1 @2xl:col-span-2" />
+                <LayoutButton envId={envId} variant="outline" />
+              </>
+            ) : (
+              <>
+                <LayoutButton envId={envId} className="col-span-2 @md:col-span-1 @2xl:col-span-2" />
+                <ControlRoomButton envId={envId} variant="outline" />
+              </>
+            )}
+            <Button size="sm" variant="outline" asChild>
               <Link to="/environments/$id/devices" params={{ id: envId }}>
                 <Server /> Devices
               </Link>

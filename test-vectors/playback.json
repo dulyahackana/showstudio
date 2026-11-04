@@ -519,6 +519,7 @@
        "event": "enter"
       },
       "window": null,
+      "standby": false,
       "blendMs": 3000,
       "cooldownMs": 2000,
       "durationMs": 2000,
@@ -1832,6 +1833,7 @@
       "event": "enter"
      },
      "window": null,
+     "standby": false,
      "blendMs": 3000,
      "cooldownMs": 2000,
      "durationMs": 2000,
@@ -1952,6 +1954,7 @@
       "event": "enter"
      },
      "window": null,
+     "standby": false,
      "blendMs": 3000,
      "cooldownMs": 2000,
      "durationMs": 2000,
@@ -2075,6 +2078,7 @@
       "event": "enter"
      },
      "window": null,
+     "standby": false,
      "blendMs": 3000,
      "cooldownMs": 2000,
      "durationMs": 2000,
@@ -2197,6 +2201,7 @@
       "event": "enter"
      },
      "window": null,
+     "standby": false,
      "blendMs": 3000,
      "cooldownMs": 2000,
      "durationMs": 2000,
@@ -2319,6 +2324,7 @@
       "event": "enter"
      },
      "window": null,
+     "standby": false,
      "blendMs": 3000,
      "cooldownMs": 2000,
      "durationMs": 2000,
@@ -2450,6 +2456,7 @@
       "event": "enter"
      },
      "window": null,
+     "standby": false,
      "blendMs": 3000,
      "cooldownMs": 2000,
      "durationMs": 2000,
@@ -2573,6 +2580,7 @@
       "event": "enter"
      },
      "window": null,
+     "standby": false,
      "blendMs": 500,
      "cooldownMs": 2000,
      "durationMs": 2000,
@@ -2695,6 +2703,7 @@
       "event": "enter"
      },
      "window": null,
+     "standby": false,
      "blendMs": 3000,
      "cooldownMs": 2000,
      "durationMs": 2000,
@@ -2708,6 +2717,513 @@
    "errors": [
     "key-after-end"
    ]
+  }
+ ],
+ "standby": [
+  {
+   "name": "no standby responses",
+   "bundle": {
+    "schemaVersion": 1,
+    "show": {
+     "id": "demo",
+     "revision": 1,
+     "name": "Demo"
+    },
+    "environment": {
+     "id": "lab",
+     "revision": 1
+    },
+    "durationMs": 10000,
+    "behaviors": [
+     {
+      "id": "wave",
+      "trigger": {
+       "sensorId": "door",
+       "event": "enter"
+      },
+      "window": null,
+      "standby": false,
+      "blendMs": 3000,
+      "cooldownMs": 2000,
+      "durationMs": 2000,
+      "devices": [
+       "audio-01",
+       "light-01",
+       "robot-01"
+      ]
+     }
+    ],
+    "devices": {
+     "robot-01": {
+      "kind": "doll",
+      "character": {
+       "ref": {
+        "id": "robot",
+        "revision": 1
+       },
+       "joints": [
+        {
+         "name": "head_yaw",
+         "type": "revolute",
+         "min": -90,
+         "max": 90,
+         "home": 0,
+         "maxVelocity": 90
+        },
+        {
+         "name": "arm_pitch",
+         "type": "revolute",
+         "min": 0,
+         "max": 120,
+         "home": 0,
+         "maxVelocity": 60
+        }
+       ]
+      },
+      "motion": {
+       "head_yaw": [
+        {
+         "t": 1000,
+         "v": 45,
+         "interp": "ease"
+        },
+        {
+         "t": 3000,
+         "v": -45,
+         "interp": "linear"
+        },
+        {
+         "t": 5000,
+         "v": 0,
+         "interp": "linear"
+        }
+       ],
+       "arm_pitch": [
+        {
+         "t": 2000,
+         "v": 90,
+         "interp": "linear"
+        },
+        {
+         "t": 6000,
+         "v": 0,
+         "interp": "linear"
+        }
+       ]
+      },
+      "behaviorMotion": {
+       "wave": {
+        "arm_pitch": [
+         {
+          "t": 0,
+          "v": 100,
+          "interp": "linear"
+         },
+         {
+          "t": 1000,
+          "v": 60,
+          "interp": "linear"
+         },
+         {
+          "t": 2000,
+          "v": 100,
+          "interp": "linear"
+         }
+        ]
+       }
+      }
+     },
+     "light-01": {
+      "kind": "light",
+      "dmx": {
+       "universe": 0,
+       "address": 1
+      },
+      "keys": [
+       {
+        "t": 0,
+        "color": "#000000",
+        "intensity": 0,
+        "interp": "linear"
+       },
+       {
+        "t": 1000,
+        "color": "#ff8800",
+        "intensity": 1,
+        "interp": "ease"
+       },
+       {
+        "t": 9000,
+        "color": "#0000ff",
+        "intensity": 0.5,
+        "interp": "step"
+       }
+      ],
+      "behaviorKeys": {
+       "wave": [
+        {
+         "t": 0,
+         "color": "#ffffff",
+         "intensity": 1,
+         "interp": "linear"
+        }
+       ]
+      }
+     },
+     "audio-01": {
+      "kind": "audio",
+      "maxVolumeDb": -6,
+      "cues": [
+       {
+        "id": "music",
+        "t": 0,
+        "assetId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "volumeDb": -12,
+        "label": "Music"
+       }
+      ],
+      "behaviorCues": {
+       "wave": [
+        {
+         "id": "hello",
+         "t": 500,
+         "assetId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         "volumeDb": -10,
+         "label": "Hello"
+        }
+       ]
+      },
+      "assets": {
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+        "path": "/api/v1/assets/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       }
+      }
+     },
+     "door": {
+      "kind": "sensor",
+      "type": "presence",
+      "range": 1.5
+     }
+    }
+   },
+   "standby": null
+  },
+  {
+   "name": "windowed response, also between shows",
+   "bundle": {
+    "schemaVersion": 1,
+    "show": {
+     "id": "demo",
+     "revision": 2,
+     "name": "Demo"
+    },
+    "environment": {
+     "id": "lab",
+     "revision": 1
+    },
+    "durationMs": 10000,
+    "behaviors": [
+     {
+      "id": "wave",
+      "trigger": {
+       "sensorId": "door",
+       "event": "enter"
+      },
+      "window": {
+       "fromMs": 0,
+       "toMs": 100
+      },
+      "standby": true,
+      "blendMs": 3000,
+      "cooldownMs": 2000,
+      "durationMs": 2000,
+      "devices": [
+       "audio-01",
+       "light-01",
+       "robot-01"
+      ]
+     }
+    ],
+    "devices": {
+     "robot-01": {
+      "kind": "doll",
+      "character": {
+       "ref": {
+        "id": "robot",
+        "revision": 1
+       },
+       "joints": [
+        {
+         "name": "head_yaw",
+         "type": "revolute",
+         "min": -90,
+         "max": 90,
+         "home": 0,
+         "maxVelocity": 90
+        },
+        {
+         "name": "arm_pitch",
+         "type": "revolute",
+         "min": 0,
+         "max": 120,
+         "home": 0,
+         "maxVelocity": 60
+        }
+       ]
+      },
+      "motion": {
+       "head_yaw": [
+        {
+         "t": 1000,
+         "v": 45,
+         "interp": "ease"
+        },
+        {
+         "t": 3000,
+         "v": -45,
+         "interp": "linear"
+        },
+        {
+         "t": 5000,
+         "v": 0,
+         "interp": "linear"
+        }
+       ],
+       "arm_pitch": [
+        {
+         "t": 2000,
+         "v": 90,
+         "interp": "linear"
+        },
+        {
+         "t": 6000,
+         "v": 0,
+         "interp": "linear"
+        }
+       ]
+      },
+      "behaviorMotion": {
+       "wave": {
+        "arm_pitch": [
+         {
+          "t": 0,
+          "v": 100,
+          "interp": "linear"
+         },
+         {
+          "t": 1000,
+          "v": 60,
+          "interp": "linear"
+         },
+         {
+          "t": 2000,
+          "v": 100,
+          "interp": "linear"
+         }
+        ]
+       }
+      }
+     },
+     "light-01": {
+      "kind": "light",
+      "dmx": {
+       "universe": 0,
+       "address": 1
+      },
+      "keys": [
+       {
+        "t": 0,
+        "color": "#000000",
+        "intensity": 0,
+        "interp": "linear"
+       },
+       {
+        "t": 1000,
+        "color": "#ff8800",
+        "intensity": 1,
+        "interp": "ease"
+       },
+       {
+        "t": 9000,
+        "color": "#0000ff",
+        "intensity": 0.5,
+        "interp": "step"
+       }
+      ],
+      "behaviorKeys": {
+       "wave": [
+        {
+         "t": 0,
+         "color": "#ffffff",
+         "intensity": 1,
+         "interp": "linear"
+        }
+       ]
+      }
+     },
+     "audio-01": {
+      "kind": "audio",
+      "maxVolumeDb": -6,
+      "cues": [
+       {
+        "id": "music",
+        "t": 0,
+        "assetId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "volumeDb": -12,
+        "label": "Music"
+       }
+      ],
+      "behaviorCues": {
+       "wave": [
+        {
+         "id": "hello",
+         "t": 500,
+         "assetId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         "volumeDb": -10,
+         "label": "Hello"
+        }
+       ]
+      },
+      "assets": {
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+        "path": "/api/v1/assets/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       }
+      }
+     },
+     "door": {
+      "kind": "sensor",
+      "type": "presence",
+      "range": 1.5
+     }
+    }
+   },
+   "standby": {
+    "schemaVersion": 1,
+    "show": {
+     "id": "demo",
+     "revision": 2,
+     "name": "Demo"
+    },
+    "environment": {
+     "id": "lab",
+     "revision": 1
+    },
+    "durationMs": 10000,
+    "behaviors": [
+     {
+      "id": "wave",
+      "trigger": {
+       "sensorId": "door",
+       "event": "enter"
+      },
+      "window": null,
+      "standby": true,
+      "blendMs": 3000,
+      "cooldownMs": 2000,
+      "durationMs": 2000,
+      "devices": [
+       "audio-01",
+       "light-01",
+       "robot-01"
+      ]
+     }
+    ],
+    "devices": {
+     "robot-01": {
+      "kind": "doll",
+      "character": {
+       "ref": {
+        "id": "robot",
+        "revision": 1
+       },
+       "joints": [
+        {
+         "name": "head_yaw",
+         "type": "revolute",
+         "min": -90,
+         "max": 90,
+         "home": 0,
+         "maxVelocity": 90
+        },
+        {
+         "name": "arm_pitch",
+         "type": "revolute",
+         "min": 0,
+         "max": 120,
+         "home": 0,
+         "maxVelocity": 60
+        }
+       ]
+      },
+      "motion": {},
+      "behaviorMotion": {
+       "wave": {
+        "arm_pitch": [
+         {
+          "t": 0,
+          "v": 100,
+          "interp": "linear"
+         },
+         {
+          "t": 1000,
+          "v": 60,
+          "interp": "linear"
+         },
+         {
+          "t": 2000,
+          "v": 100,
+          "interp": "linear"
+         }
+        ]
+       }
+      }
+     },
+     "light-01": {
+      "kind": "light",
+      "dmx": {
+       "universe": 0,
+       "address": 1
+      },
+      "keys": [],
+      "behaviorKeys": {
+       "wave": [
+        {
+         "t": 0,
+         "color": "#ffffff",
+         "intensity": 1,
+         "interp": "linear"
+        }
+       ]
+      }
+     },
+     "audio-01": {
+      "kind": "audio",
+      "maxVolumeDb": -6,
+      "cues": [],
+      "behaviorCues": {
+       "wave": [
+        {
+         "id": "hello",
+         "t": 500,
+         "assetId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+         "volumeDb": -10,
+         "label": "Hello"
+        }
+       ]
+      },
+      "assets": {
+       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+        "path": "/api/v1/assets/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+       }
+      }
+     },
+     "door": {
+      "kind": "sensor",
+      "type": "presence",
+      "range": 1.5
+     }
+    }
+   }
   }
  ]
 }

@@ -46,16 +46,17 @@ Or, production-shaped with Postgres: `docker compose up --build` → http://loca
 
 ### Demo path (maps to the brief)
 
-| Step in the brief                                        | Where                                                                                                                    |
-| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Upload 3D models and definitions                         | **Library → Characters → New character** (GLB + URDF/JSON; samples in `samples/`)                                        |
-| Refine definitions (range of motion)                     | Character editor: joints bound to rig bones, range-of-motion bars, joint tester, "sweep at max speed"                    |
-| Environmental specifications                             | **Locations → Hollow Hills → environment → Layout**: stage, keep-out zones, fixtures, sensors, scenery; gizmos (W/E/R)   |
-| Motion, sound, light patterns and sensor responses       | **Project → ① Animate**: multi-track timeline, auto-key posing, live validation, **Sensor responses**, "Simulate guest"  |
-| Safety sign-off                                          | **Project → ② Review**: four-eyes approval signs the exact bundle                                                        |
-| Upload to dolls, lighting, sound, sensing → "good to go" | **Project → ③ Deploy**: approved + signed revision → every device verifies and stages → _good to go_                     |
-| Operator "launch", multiple shows, swap                  | **Project → ④ Launch**, or the environment's **Control room**: zone-clear confirmation, synchronized start, swap, e-stop |
-| See it play                                              | **Godot window**: figures, lights and speakers follow the controllers; walk the guest (WASD) into a sensor zone          |
+| Step in the brief                                        | Where                                                                                                                                     |
+| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Upload 3D models and definitions                         | **Library → Characters → New character** (GLB + URDF/JSON; samples in `samples/`)                                                         |
+| Refine definitions (range of motion)                     | Character editor: joints bound to rig bones, range-of-motion bars, joint tester, "sweep at max speed"                                     |
+| Environmental specifications                             | **Locations → Hollow Hills → environment → Layout**: stage, keep-out zones, fixtures, sensors, scenery; gizmos (W/E/R)                    |
+| Motion, sound, light patterns and sensor responses       | **Project → ① Animate**: multi-track timeline, auto-key posing, live validation, **Sensor responses**, "Simulate guest"                   |
+| Safety sign-off                                          | **Project → ② Review**: four-eyes approval signs the exact bundle                                                                         |
+| Revision history, downloads, revert                      | **Project → Revisions**: every revision, where it runs, definition (.json) and offline install package (.zip); restore as draft; redeploy |
+| Upload to dolls, lighting, sound, sensing → "good to go" | **Project → ③ Deploy**: approved + signed revision → every device verifies and stages → _good to go_                                      |
+| Operator "launch", multiple shows, swap                  | **Project → ④ Launch**, or the environment's **Control room**: zone-clear confirmation, synchronized start, swap, e-stop                  |
+| See it play                                              | **Godot window**: figures, lights and speakers follow the controllers; walk the guest (WASD) into a sensor zone                           |
 
 The **Overview** shows every project in the column of the step it is waiting for, and every location live.
 

@@ -12,12 +12,14 @@ import { timeAgo } from '@/lib/format'
 import { docQuery, useCharacters } from '@/lib/queries'
 import { cn } from '@/lib/utils'
 
+/** Where the latest revision stands (shows go through review), or "draft" before the first publish. */
 export function DocStatus({ doc, reviewed = false }: { doc: DocumentSummary; reviewed?: boolean }) {
-  if (reviewed && doc.latestApprovedRevision)
-    return <ToneBadge t="ok">approved r{doc.latestApprovedRevision}</ToneBadge>
-  if (reviewed && doc.latestRevision) return <ToneBadge t="warn">r{doc.latestRevision} in review</ToneBadge>
-  if (doc.latestRevision) return <ToneBadge t="info">published r{doc.latestRevision}</ToneBadge>
-  return <ToneBadge t="muted">draft</ToneBadge>
+  const r = doc.latestRevision
+  if (!r) return <ToneBadge t="muted">unpublished</ToneBadge>
+  if (!reviewed) return <ToneBadge t="info">published r{r}</ToneBadge>
+  if (doc.latestRevisionStatus === 'published') return <ToneBadge t="review">r{r} in review</ToneBadge>
+  if (doc.latestRevisionStatus === 'rejected') return <ToneBadge t="bad">r{r} rejected</ToneBadge>
+  return <ToneBadge t="ok">r{r} approved</ToneBadge>
 }
 
 function Card({
@@ -82,7 +84,8 @@ export function CharacterCard({ doc }: { doc: DocumentSummary }) {
         c && (
           <>
             <span className="inline-flex items-center gap-1">
-              <KindIcon kind="doll" className="size-3.5" /> {c.joints.length} joints
+              <KindIcon kind="doll" className="size-3.5" /> {c.joints.length}{' '}
+              {c.joints.length === 1 ? 'joint' : 'joints'}
             </span>
             <span className="font-mono">{c.footprint.size.map((n) => n.toFixed(1)).join(' × ')} m</span>
           </>

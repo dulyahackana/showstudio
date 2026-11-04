@@ -11,6 +11,7 @@ const RING: Record<DeviceStatus, string> = {
   ready: 'stroke-ok',
   armed: 'stroke-warn',
   running: 'stroke-motion',
+  standby: 'stroke-sensor',
   estopped: 'stroke-danger',
   faulted: 'stroke-danger',
   offline: 'stroke-muted-foreground/40',
@@ -59,7 +60,7 @@ export function FloorPlan({
     xs.push(s.position[0] - s.range, s.position[0] + s.range)
     zs.push(s.position[2] - s.range, s.position[2] + s.range)
   }
-  for (const d of [...env.lights, ...env.audio, ...env.placements]) {
+  for (const d of [...env.lights, ...env.audio, ...env.placements, ...(env.consoles ?? [])]) {
     xs.push(d.position[0])
     zs.push(d.position[2])
   }
@@ -68,7 +69,7 @@ export function FloorPlan({
   const minZ = Math.min(...zs) - pad
   const w = Math.max(...xs) + pad - minX
   const h = Math.max(...zs) + pad - minZ
-  const font = Math.max(w, h) * 0.026
+  const font = Math.max(w, h) * 0.034
   const ring = (deviceId: string) => (states?.[deviceId] ? RING[states[deviceId]] : undefined)
   const allLabels = labels === true
   const click = (deviceId: string) => (onSelect ? () => onSelect(deviceId) : undefined)
@@ -283,6 +284,51 @@ export function FloorPlan({
             {allLabels && (
               <text x={x} y={z + 0.55} textAnchor="middle" fontSize={font * 0.8} className="fill-audio">
                 {a.name}
+              </text>
+            )}
+          </g>
+        )
+      })}
+
+      {/* operator consoles: the desk, facing the operator */}
+      {(env.consoles ?? []).map((c) => {
+        const [x, z] = xz(c.position)
+        return (
+          <g key={c.deviceId} transform={`translate(${x} ${z}) rotate(${-c.rotationY})`}>
+            <title>{`${c.name} (${c.deviceId})`}</title>
+            <rect
+              x={-0.31}
+              y={-0.21}
+              width={0.62}
+              height={0.42}
+              rx={0.06}
+              className="fill-sky-300/15 stroke-sky-300"
+              strokeWidth={1}
+              vectorEffect="non-scaling-stroke"
+            />
+            <circle cx={0.15} cy={0.02} r={0.08} className="fill-danger" />
+            {ring(c.deviceId) && (
+              <rect
+                x={-0.42}
+                y={-0.32}
+                width={0.84}
+                height={0.64}
+                rx={0.1}
+                fill="none"
+                className={ring(c.deviceId)}
+                strokeWidth={1.5}
+                vectorEffect="non-scaling-stroke"
+              />
+            )}
+            {allLabels && (
+              <text
+                y={0.62}
+                textAnchor="middle"
+                fontSize={font * 0.8}
+                className="fill-sky-300"
+                transform={`rotate(${c.rotationY})`}
+              >
+                {c.name}
               </text>
             )}
           </g>

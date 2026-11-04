@@ -9,6 +9,7 @@ import {
   API_PREFIX,
   buildPath,
   contract,
+  PackageManifest,
   type Problem,
   type RouteInput,
   type RouteKey,
@@ -17,6 +18,7 @@ import {
 } from '@studio/schema'
 import { type App, buildApp } from './app.ts'
 import { loadConfig } from './config.ts'
+import { unzip } from './zip.ts'
 
 /*
  * End-to-end through the real HTTP + WebSocket stack with simulated devices:
@@ -124,7 +126,7 @@ const allOffline = () =>
 const allOnline = () =>
   waitFor(
     () => call('alice', 'listDevices', { query: { environmentId: 'lab' } }),
-    (ds) => ds.length === 4 && ds.every((d) => d.online),
+    (ds) => ds.length === 5 && ds.every((d) => d.online),
   )
 
 beforeAll(async () => {
@@ -254,6 +256,35 @@ describe('studio + fleet end to end', () => {
     expect(verify('sha256', bytes, createPublicKey(publicKeyPem), Buffer.from(signature, 'base64'))).toBe(true)
   })
 
+  it('packages approved revisions for offline install, for the people who may deploy them', async () => {
+    const download = async (user: string) =>
+      Buffer.from(await (await call(user, 'downloadPackage', { params: { id: 'demo', revision: 1 } })).arrayBuffer())
+    const zipped = await download('olga')
+    const files = unzip(zipped)
+    expect([...files.keys()].sort()).toEqual([
+      'README.txt',
+      `audio/${audioId}.wav`,
+      'bundle.json',
+      'bundle.sig',
+      'manifest.json',
+      'show.json',
+    ])
+    const file = (name: string) => files.get(name) ?? Buffer.alloc(0)
+    const manifest = PackageManifest.parse(JSON.parse(file('manifest.json').toString('utf8')))
+    const rev = await call('olga', 'getRevision', { params: { id: 'demo', revision: 1 } })
+    expect(manifest).toMatchObject({ show: { id: 'demo', revision: 1 }, approved: { by: 'sam' } })
+    expect(createHash('sha256').update(file('bundle.json')).digest('hex')).toBe(rev.bundleSha256 ?? '')
+    expect(manifest.bundle.sha256).toBe(rev.bundleSha256 ?? '')
+    const { publicKeyPem } = await call(null, 'signingKey')
+    const signature = Buffer.from(file('bundle.sig').toString('utf8'), 'base64')
+    expect(verify('sha256', file('bundle.json'), createPublicKey(publicKeyPem), signature)).toBe(true)
+    for (const a of manifest.assets) expect(createHash('sha256').update(file(a.path)).digest('hex')).toBe(a.id)
+    expect(JSON.parse(file('show.json').toString('utf8'))).toEqual(rev.content)
+
+    expect((await download('alice')).equals(zipped)).toBe(true) // deterministic
+    await fails(call('tom', 'downloadPackage', { params: { id: 'demo', revision: 1 } }), 403) // editor, not operator
+  })
+
   it('refuses to deploy while devices are offline (all-or-nothing)', async () => {
     const p = await fails(call('alice', 'createDeployment', { body: { showId: 'demo', revision: 1 } }), 409)
     expect(p.reasons).toEqual(expect.arrayContaining(['robot-01: offline']))
@@ -322,6 +353,65 @@ describe('studio + fleet end to end', () => {
     await allOffline()
   })
 
+  it('runs and e-stops from the operator console on site', async () => {
+    const f = await boot()
+    await allOnline()
+    const panel = f.device('console-01')
+    const status = () => call('olga', 'environmentStatus', { params: { environmentId: 'lab' } })
+    await waitFor(status, (s) => s.prepared.some((p) => p.goodToGo))
+    // The display lists the prepared shows; RUN goes through the same checks as the studio.
+    await waitFor(
+      () => panel.console.panel?.prepared.find((p) => p.goodToGo)?.sha256,
+      (sha) => sha !== undefined && panel.console.selected === sha,
+    )
+    panel.press('run')
+    const launched = await waitFor(status, (s) => ['scheduled', 'running'].includes(s.run?.status ?? ''))
+    expect(launched.run?.launchedBy).toBe('console-01')
+    await waitFor(
+      () => panel.console.panel?.run?.sha256,
+      (sha) => sha === launched.run?.sha256,
+    )
+
+    // E-STOP latches every controller over the park network, even one cut off from the cloud.
+    f.device('robot-01').disconnect()
+    panel.press('estop')
+    expect(f.device('robot-01').state).toBe('estopped')
+    const latched = await waitFor(status, (s) => s.estop.active)
+    expect(latched.estop.by).toBe('console-01')
+    expect(latched.run?.status).toBe('stopped')
+
+    // Nobody resets while the mushroom is still pushed in: not the studio, not the console.
+    expect((await fails(call('olga', 'resetEstop', { body: { environmentId: 'lab' } }), 409)).detail).toMatch(
+      /console-01 is still pushed in/,
+    )
+    panel.press('reset')
+    expect(panel.console.notice).toMatch(/twist/i)
+    panel.press('release')
+    await new Promise((r) => setTimeout(r, 200))
+    panel.press('reset')
+    await waitFor(
+      () => f.devices.map((d) => d.state),
+      (states) => !states.includes('estopped'),
+    )
+    expect((await status()).estop.active).toBe(false)
+
+    // Engine simulators and tests press the same buttons through the API.
+    await call('olga', 'simulateConsole', {
+      params: { deviceId: 'console-01' },
+      body: { environmentId: 'lab', button: 'estop' },
+    })
+    await waitFor(status, (s) => s.estop.active && s.estop.by === 'console-01')
+    await fails(
+      call('olga', 'simulateConsole', { params: { deviceId: 'door' }, body: { environmentId: 'lab', button: 'run' } }),
+      400,
+    )
+    panel.press('release')
+    await new Promise((r) => setTimeout(r, 200))
+    await call('olga', 'resetEstop', { body: { environmentId: 'lab' } })
+    f.stop()
+    await allOffline()
+  })
+
   it('blocks deploys to controllers running a different definition', async () => {
     await call('alice', 'saveDraft', {
       params: { id: 'demo' },
@@ -363,6 +453,25 @@ describe('studio + fleet end to end', () => {
     corrupt.stop()
   })
 
+  it('reverts by restoring an earlier revision as the draft, which goes through review again', async () => {
+    const doc = await call('alice', 'getDocument', { params: { id: 'demo' } })
+    const restore = (user: string, draftVersion: number) =>
+      call(user, 'restoreRevision', { params: { id: 'demo', revision: 1 }, body: { draftVersion } })
+    await fails(restore('olga', doc.draftVersion), 403)
+    await fails(restore('alice', doc.draftVersion - 1), 409) // someone saved in between
+    const restored = await restore('alice', doc.draftVersion)
+    expect(restored.name).toBe(show.name)
+    const rev = await call('alice', 'publish', {
+      params: { id: 'demo' },
+      body: { draftVersion: restored.draftVersion, note: 'back to r1' },
+    })
+    expect(rev).toMatchObject({ revision: 3, status: 'published', signed: false })
+    const content = async (revision: number) =>
+      (await call('alice', 'getRevision', { params: { id: 'demo', revision } })).content
+    expect(await content(3)).toEqual(await content(1))
+    await fails(call('olga', 'downloadPackage', { params: { id: 'demo', revision: 3 } }), 409) // not approved yet
+  })
+
   it('keeps a tamper-evident audit trail', async () => {
     const entries = await call('sam', 'listAudit', { query: { limit: 100 } })
     expect(entries.map((e) => e.action)).toEqual(
@@ -373,6 +482,8 @@ describe('studio + fleet end to end', () => {
         'show.launch',
         'estop.trigger',
         'estop.reset',
+        'show.package',
+        'draft.restore',
       ]),
     )
     expect((await call('sam', 'verifyAudit')).ok).toBe(true)
@@ -384,6 +495,9 @@ describe('studio + fleet end to end', () => {
 })
 
 describe('several attractions at once', () => {
+  let annex: SimFleet
+  const status = (environmentId: string) => call('olga', 'environmentStatus', { params: { environmentId } })
+
   it('runs, launches and e-stops each attraction on its own', async () => {
     const audio = (await call('alice', 'listAssets')).find((a) => a.kind === 'audio')
     await call('alice', 'createDocument', {
@@ -403,11 +517,11 @@ describe('several attractions at once', () => {
     await call('sam', 'approveRevision', { params: { id: 'annex-show', revision: 1 }, body: { note: 'ok' } })
 
     // Same device ids as the lab, different attraction: the gateway keys devices by (attraction, id).
-    fleets.push(await startFleet({ apiUrl: url, environmentId: 'annex', provisioningToken: 'dev-provisioning-token' }))
-    const status = (environmentId: string) => call('olga', 'environmentStatus', { params: { environmentId } })
+    annex = await startFleet({ apiUrl: url, environmentId: 'annex', provisioningToken: 'dev-provisioning-token' })
+    fleets.push(annex)
     await waitFor(
       () => call('olga', 'listDevices', { query: { environmentId: 'annex' } }),
-      (ds) => ds.length === 4 && ds.every((d) => d.online),
+      (ds) => ds.length === 5 && ds.every((d) => d.online),
     )
     await call('olga', 'createDeployment', { body: { showId: 'annex-show', revision: 1 } })
     await waitFor(
@@ -419,7 +533,8 @@ describe('several attractions at once', () => {
     await call('olga', 'launch', { body: { showId: 'annex-show', revision: 1, zoneClearConfirmed: true } })
     await waitFor(
       () => status('annex'),
-      (s) => s.run !== null && s.devices.every((d) => d.state !== 'ready'),
+      // Consoles stay ready for the operator while the show runs.
+      (s) => s.run !== null && s.devices.every((d) => d.kind === 'console' || d.state !== 'ready'),
     )
     expect((await status('lab')).run?.id ?? null).toBe(labBefore.run?.id ?? null)
 
@@ -432,6 +547,108 @@ describe('several attractions at once', () => {
     expect(labNow.estop.active).toBe(false)
     expect(labNow.devices.some((d) => d.state === 'estopped')).toBe(false)
     await call('olga', 'resetEstop', { body: { environmentId: 'annex' } })
+  })
+
+  it('keeps answering guests between shows until an operator ends standby', async () => {
+    const base = (await call('alice', 'getDocument', { params: { id: 'annex-show' } })).draft as ShowDefinition
+    const draft: ShowDefinition = {
+      ...base,
+      name: 'Short',
+      durationMs: 800,
+      tracks: { motion: {}, lights: {}, audio: {} },
+      behaviors: base.behaviors.map((b) => ({ ...b, standby: true })),
+    }
+    await call('alice', 'createProject', { body: { id: 'annex-short', draft } })
+    for (const [user, role] of [
+      ['sam', 'reviewer'],
+      ['olga', 'operator'],
+    ] as const) {
+      await call('alice', 'setProjectMember', { params: { projectId: 'annex-short', user }, body: { role } })
+    }
+    await call('alice', 'publish', { params: { id: 'annex-short' }, body: { draftVersion: 1, note: '' } })
+    await call('sam', 'approveRevision', { params: { id: 'annex-short', revision: 1 }, body: { note: 'ok' } })
+    await call('olga', 'createDeployment', { body: { showId: 'annex-short', revision: 1 } })
+    await waitFor(
+      () => status('annex'),
+      (s) => s.prepared.some((p) => p.showId === 'annex-short' && p.goodToGo),
+    )
+
+    await call('olga', 'launch', { body: { showId: 'annex-short', revision: 1, zoneClearConfirmed: true } })
+    await waitFor(
+      () => status('annex'),
+      (s) => s.run?.status === 'completed' && s.devices.every((d) => d.kind === 'console' || d.state === 'standby'),
+    )
+    await call('olga', 'simulateSensor', {
+      params: { deviceId: 'door' },
+      body: { environmentId: 'annex', event: 'enter' },
+    })
+    const robot = annex.device('robot-01')
+    await waitFor(
+      () => robot.startedBehaviors.map((b) => b.id),
+      (ids) => ids.includes('wave'),
+    )
+    // Blending from home towards the clip
+    await waitFor(
+      () => robot.pose.arm_pitch ?? 0,
+      (v) => v > 1,
+    )
+
+    await call('olga', 'stop', { body: { environmentId: 'annex' } })
+    await waitFor(
+      () => status('annex'),
+      (s) => s.devices.every((d) => d.state === 'ready'),
+    )
+    expect(robot.pose.arm_pitch).toBe(0)
+  })
+
+  it('deletes a project softly: hidden, read-only, off the controllers, recoverable', async () => {
+    const id = { params: { projectId: 'annex-short' } }
+    const sha = (await call('alice', 'getRevision', { params: { id: 'annex-short', revision: 1 } })).bundleSha256
+    const robot = annex.device('robot-01')
+    expect(robot.stagedShows.some((s) => s.sha256 === sha)).toBe(true)
+
+    await fails(call('tom', 'deleteProject', id), 404) // not on the team
+    await fails(call('olga', 'deleteProject', id), 403) // operator, not owner
+    await call('olga', 'launch', { body: { showId: 'annex-short', revision: 1, zoneClearConfirmed: true } })
+    await fails(call('alice', 'deleteProject', id), 409) // live
+    await call('olga', 'stop', { body: { environmentId: 'annex' } })
+
+    const deleted = await call('alice', 'deleteProject', id)
+    expect(deleted).toMatchObject({ deletedBy: 'alice', deletedAt: expect.any(String) })
+    expect((await call('alice', 'listProjects')).map((p) => p.id)).not.toContain('annex-short')
+    expect((await call('alice', 'listProjects', { query: { status: 'deleted' } })).map((p) => p.id)).toEqual([
+      'annex-short',
+    ])
+    expect((await call('alice', 'listDocuments', { query: { kind: 'show' } })).map((d) => d.id)).not.toContain(
+      'annex-short',
+    )
+    expect((await call('olga', 'getProject', id)).deletedBy).toBe('alice') // members can still read it
+    const doc = await call('alice', 'getDocument', { params: { id: 'annex-short' } })
+    await fails(
+      call('alice', 'saveDraft', {
+        params: { id: 'annex-short' },
+        body: { kind: 'show', draftVersion: doc.draftVersion, draft: doc.draft as ShowDefinition },
+      }),
+      409,
+    )
+    await fails(call('olga', 'createDeployment', { body: { showId: 'annex-short', revision: 1 } }), 409)
+    await waitFor(
+      () => robot.stagedShows.map((s) => s.sha256),
+      (shas) => !shas.includes(sha ?? ''),
+    )
+    const taken = await fails(
+      call('alice', 'createProject', { body: { id: 'annex-short', draft: doc.draft as ShowDefinition } }),
+      409,
+    )
+    expect(taken.detail).toContain('recover it')
+
+    await fails(call('olga', 'restoreProject', id), 403)
+    const restored = await call('alice', 'restoreProject', id)
+    expect(restored).toMatchObject({ deletedAt: null, deletedBy: null })
+    expect((await call('alice', 'listProjects')).map((p) => p.id)).toContain('annex-short')
+    await fails(call('alice', 'restoreProject', id), 409) // not deleted
+    const actions = (await call('sam', 'listAudit', { query: { limit: 50 } })).map((e) => e.action)
+    expect(actions).toEqual(expect.arrayContaining(['project.delete', 'project.restore']))
   })
 })
 

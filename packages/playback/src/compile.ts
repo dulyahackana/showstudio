@@ -109,6 +109,7 @@ export function compileBundle(input: CompileInput): ShowBundle {
     id: b.id,
     trigger: b.trigger,
     window: b.window,
+    standby: b.standby ?? false,
     blendMs: b.blendMs,
     cooldownMs: b.cooldownMs,
     durationMs: b.durationMs,

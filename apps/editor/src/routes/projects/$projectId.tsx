@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, Outlet } from '@tanstack/react-router'
-import { ChevronRight, Mountain, Users } from 'lucide-react'
-import { ProjectStepper, TeamAvatars } from '@/components/project-ui'
+import { ChevronRight, History, Mountain, Users } from 'lucide-react'
+import { DeletedBanner, ProjectMenu } from '@/components/project-delete'
+import { ProjectStepper, RoleBadge, TeamAvatars } from '@/components/project-ui'
 import { locationsQuery, projectQuery } from '@/lib/project'
 import { docsQuery } from '@/lib/queries'
 
@@ -26,7 +27,7 @@ function ProjectLayout() {
   return (
     <div className="flex h-full flex-col">
       <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-surface/60 px-4">
-        <div className="flex min-w-0 items-center gap-1.5">
+        <div className="flex min-w-40 shrink-0 items-center gap-1.5">
           <Link to="/projects" className="shrink-0 text-sm text-muted-foreground hover:text-foreground">
             Projects
           </Link>
@@ -34,7 +35,7 @@ function ProjectLayout() {
           <Link
             to="/projects/$projectId"
             params={{ projectId }}
-            className="truncate text-base font-semibold tracking-tight hover:text-primary"
+            className="max-w-72 truncate text-base font-semibold tracking-tight hover:text-primary"
             activeOptions={{ exact: true }}
             data-testid="doc-title"
           >
@@ -53,9 +54,20 @@ function ProjectLayout() {
               className="hidden items-center gap-1.5 rounded-md border px-2 py-1 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-foreground xl:flex"
             >
               <Mountain className="size-3.5" />
-              <span className="max-w-40 truncate">{env.name}</span>
+              <span className="hidden max-w-40 truncate 2xl:inline">{env.name}</span>
             </Link>
           )}
+          <Link
+            to="/projects/$projectId/revisions"
+            params={{ projectId }}
+            className="flex h-8 items-center gap-2 rounded-md px-2 text-sm text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
+            activeProps={{ className: 'bg-surface-2 text-foreground ring-1 ring-border' }}
+            title="Every revision: download, restore, redeploy"
+            data-testid="project-revisions"
+          >
+            <History className="size-4" />
+            <span className="hidden xl:inline">Revisions</span>
+          </Link>
           <Link
             to="/projects/$projectId/team"
             params={{ projectId }}
@@ -67,8 +79,17 @@ function ProjectLayout() {
             <span className="hidden 2xl:inline">Team</span>
             <TeamAvatars project={project} max={3} />
           </Link>
+          <span
+            className="flex items-center gap-1.5 text-xs text-muted-foreground"
+            title={`You are ${project.myRole ?? 'an admin'} on this project: that decides what you can do here`}
+            data-testid="my-role"
+          >
+            <span className="hidden 2xl:inline">You</span> <RoleBadge role={project.myRole} />
+          </span>
+          <ProjectMenu project={project} />
         </div>
       </header>
+      <DeletedBanner project={project} />
       <div className="flex min-h-0 flex-1 flex-col">
         <Outlet />
       </div>

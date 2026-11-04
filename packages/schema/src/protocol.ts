@@ -8,13 +8,13 @@ import { SensorEvent } from './environment.ts'
  * fleet manager can resend freely while reconciling desired vs reported state.
  */
 
-export const DeviceKind = z.enum(['doll', 'light', 'audio', 'sensor']).meta({ id: 'DeviceKind' })
+export const DeviceKind = z.enum(['doll', 'light', 'audio', 'sensor', 'console']).meta({ id: 'DeviceKind' })
 export type DeviceKind = z.infer<typeof DeviceKind>
 
-export const DeviceState = z.enum(['idle', 'ready', 'armed', 'running', 'estopped', 'faulted']).meta({
+export const DeviceState = z.enum(['idle', 'ready', 'armed', 'running', 'standby', 'estopped', 'faulted']).meta({
   id: 'DeviceState',
   description:
-    'idle: nothing staged; ready: >=1 show staged; armed: launch scheduled; running; estopped: latched until reset; faulted',
+    'idle: nothing staged; ready: >=1 show staged; armed: launch scheduled; running; standby: the last show completed and its standby responses still answer guests; estopped: latched until reset; faulted',
 })
 export type DeviceState = z.infer<typeof DeviceState>
 
@@ -60,6 +60,10 @@ export const StatusMsg = z
     staged: z.array(StagedShow),
     active: ActiveShow.nullable(),
     fault: z.string().nullable(),
+    estopPressed: z
+      .boolean()
+      .optional()
+      .describe('Consoles only: the E-STOP mushroom is pushed in (it stays in until twisted out)'),
   })
   .meta({ id: 'StatusMsg' })
 export type StatusMsg = z.infer<typeof StatusMsg>
@@ -79,8 +83,25 @@ export const SensorEventMsg = z
   .meta({ id: 'SensorEventMsg', description: 'Telemetry only: reactions are decided locally in the park' })
 export type SensorEventMsg = z.infer<typeof SensorEventMsg>
 
+export const ConsoleAction = z.enum(['run', 'estop', 'reset']).meta({ id: 'ConsoleAction' })
+export type ConsoleAction = z.infer<typeof ConsoleAction>
+
+export const ConsoleMsg = z
+  .object({
+    type: z.literal('console'),
+    action: ConsoleAction,
+    sha256: Sha256.nullable().describe('run: the prepared show selected on the panel'),
+    at: z.number(),
+  })
+  .meta({
+    id: 'ConsoleMsg',
+    description:
+      'An operator pressed a console button. estop has already latched the park locally; run and reset are decided by the fleet manager (refusals come back as an error message)',
+  })
+export type ConsoleMsg = z.infer<typeof ConsoleMsg>
+
 export const DeviceToFleet = z
-  .discriminatedUnion('type', [HelloMsg, StatusMsg, AckMsg, SensorEventMsg])
+  .discriminatedUnion('type', [HelloMsg, StatusMsg, AckMsg, SensorEventMsg, ConsoleMsg])
   .meta({ id: 'DeviceToFleet' })
 export type DeviceToFleet = z.infer<typeof DeviceToFleet>
 
@@ -133,6 +154,27 @@ export const SimulateSensorMsg = z
   .object({ type: z.literal('simulateSensor'), opId: z.string(), event: SensorEvent })
   .meta({ id: 'SimulateSensorMsg', description: 'Development only: stands in for a guest' })
 
+export const PanelMsg = z
+  .object({
+    type: z.literal('panel'),
+    prepared: z.array(
+      z.object({ sha256: Sha256, showId: Id, revision: Revision, name: z.string(), goodToGo: z.boolean() }),
+    ),
+    run: z
+      .object({ sha256: Sha256, name: z.string(), revision: Revision, startAt: z.number(), durationMs: z.number() })
+      .nullable(),
+    estop: z.object({ active: z.boolean(), by: z.string().nullable(), reason: z.string().nullable() }),
+  })
+  .meta({ id: 'PanelMsg', description: "What a console's display shows; resent whenever it changes" })
+export type PanelMsg = z.infer<typeof PanelMsg>
+
+export const ConsoleButton = z.enum(['run', 'estop', 'release', 'reset', 'select']).meta({ id: 'ConsoleButton' })
+export type ConsoleButton = z.infer<typeof ConsoleButton>
+
+export const SimulateConsoleMsg = z
+  .object({ type: z.literal('simulateConsole'), opId: z.string(), button: ConsoleButton })
+  .meta({ id: 'SimulateConsoleMsg', description: 'Development only: stands in for an operator at the panel' })
+
 export const ErrorMsg = z
   .object({ type: z.literal('error'), code: z.string(), message: z.string() })
   .meta({ id: 'ErrorMsg' })
@@ -147,6 +189,8 @@ export const FleetToDevice = z
     EstopMsg,
     ResetMsg,
     SimulateSensorMsg,
+    PanelMsg,
+    SimulateConsoleMsg,
     ErrorMsg,
   ])
   .meta({ id: 'FleetToDevice' })

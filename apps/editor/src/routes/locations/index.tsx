@@ -12,11 +12,7 @@ function LocationsPage() {
   const { data: envs = [] } = useQuery(docsQuery('environment'))
   return (
     <>
-      <PageHeader
-        eyebrow="Workspace"
-        title="Locations"
-        description="Physical sites. Each holds environments: the attractions with their stage, figures, lights, speakers and sensors. Shared with the whole workspace."
-      />
+      <PageHeader eyebrow="Workspace" title="Locations" description="Parks and the attractions in them." />
       <PageBody>
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {locations.map((loc) => {

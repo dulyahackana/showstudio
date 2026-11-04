@@ -110,12 +110,32 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if not (event is InputEventKey and event.pressed and not event.echo):
+		return
 	# Number keys fire sensors 1..9 in layout order (press for buttons, enter for presence).
-	if event is InputEventKey and event.pressed and not event.echo and event.keycode >= KEY_1 and event.keycode <= KEY_9:
+	if event.keycode >= KEY_1 and event.keycode <= KEY_9:
 		var sensors := devices.filter(func(d): return d.kind == "sensor")
 		var i: int = event.keycode - KEY_1
 		if i < sensors.size():
 			attraction.click_sensor(sensors[i].device_id)
+		return
+	# The first operator console: Enter run, N next show, Space e-stop (again: twist it out),
+	# R reset, C look at it.
+	var consoles := devices.filter(func(d): return d.kind == "console")
+	if consoles.is_empty():
+		return
+	var console_id: String = consoles[0].device_id
+	match event.keycode:
+		KEY_ENTER, KEY_KP_ENTER:
+			attraction.press_console(console_id, "run")
+		KEY_N:
+			attraction.press_console(console_id, "select")
+		KEY_SPACE:
+			attraction.press_console(console_id, "estop")
+		KEY_R:
+			attraction.press_console(console_id, "reset")
+		KEY_C:
+			attraction.focus_console(console_id)
 
 
 func log_line(text: String) -> void:

@@ -9,7 +9,7 @@ import {
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { Draft } from 'immer'
-import { Crosshair, Fence, Magnet, Move3d, Plus, Rotate3d, Scaling, Trash } from 'lucide-react'
+import { ChevronRight, Crosshair, Fence, Magnet, Move3d, Plus, Rotate3d, Scaling, Trash } from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { EditableContext, EditButton } from '@/components/editable'
 import { EditorToolbar } from '@/components/editor-toolbar'
@@ -17,6 +17,7 @@ import { ColorInput, NumberInput, Row, Vec3Input } from '@/components/fields'
 import { IssuesList } from '@/components/issues-list'
 import { KIND } from '@/components/kind'
 import { RevisionsPanel } from '@/components/revisions-panel'
+import { SidePanelToggle, useSidePanel } from '@/components/side-panel'
 import { type GizmoMode, type StageChange, StageScene, type StageSelection } from '@/components/three/stage-scene'
 import { framing, Glass, Viewport } from '@/components/three/viewport'
 import { Input } from '@/components/ui/input'
@@ -38,14 +39,24 @@ export const Route = createFileRoute('/environments/$id/')({
 })
 
 type Env = EnvironmentDefinition
-type ListKey = 'placements' | 'lights' | 'audio' | 'sensors'
+type ListKey = 'placements' | 'lights' | 'audio' | 'sensors' | 'consoles'
 const TAB_FOR: Record<NonNullable<StageSelection>['kind'], string> = {
   placement: 'figures',
   light: 'lighting',
   audio: 'audio',
   scenery: 'scenery',
   sensor: 'sensors',
+  console: 'consoles',
   keepOut: 'stage',
+}
+
+/** A device card's title: the name people use, the controller id beside it. */
+function DeviceTitle({ name, id }: { name: string; id: string }) {
+  return (
+    <>
+      {name} <span className="font-mono text-[10px] font-normal text-muted-foreground">{id}</span>
+    </>
+  )
 }
 
 function uniqueId(env: Env, base: string): string {
@@ -56,6 +67,10 @@ function uniqueId(env: Env, base: string): string {
   }
 }
 
+/**
+ * One object in the side panel: a single row until it is selected (here or in the 3D
+ * view), then its fields. Selecting in the view scrolls it into sight.
+ */
 function ItemCard({
   selected,
   onSelect,
@@ -72,42 +87,44 @@ function ItemCard({
   children: ReactNode
 }) {
   const k = kind ? KIND[kind] : null
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (selected) ref.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+  }, [selected])
   return (
-    // biome-ignore lint/a11y/useSemanticElements: card contains interactive inputs
     <div
-      role="button"
-      tabIndex={0}
-      onClick={onSelect}
-      onKeyDown={() => {}}
+      ref={ref}
       className={cn(
-        'space-y-2.5 rounded-xl border bg-card p-3.5 transition-colors hover:border-foreground/15',
+        'rounded-lg border bg-card transition-colors hover:border-foreground/15',
         selected && 'border-primary/60 bg-primary/[0.04] hover:border-primary/60',
       )}
     >
-      <div className="flex items-center gap-2.5">
-        {k ? (
-          <span className={cn('flex size-7 items-center justify-center rounded-md border', k.soft)}>
-            <k.icon className={cn('size-3.5', k.text)} />
-          </span>
-        ) : (
-          <span className="flex size-7 items-center justify-center rounded-md border border-warn/25 bg-warn/10">
-            <Fence className="size-3.5 text-warn" />
-          </span>
-        )}
-        <span className="min-w-0 flex-1 truncate font-mono text-xs font-medium">{title}</span>
-        <EditButton
-          size="icon-xs"
-          variant="ghost"
-          aria-label="Delete"
-          onClick={(e) => {
-            e.stopPropagation()
-            onDelete()
-          }}
+      <div className="flex items-center gap-1 pr-1.5">
+        <button
+          type="button"
+          onClick={onSelect}
+          aria-expanded={selected}
+          className="flex min-w-0 flex-1 items-center gap-2.5 px-2.5 py-2 text-left"
         >
+          {k ? (
+            <span className={cn('flex size-6 shrink-0 items-center justify-center rounded-md border', k.soft)}>
+              <k.icon className={cn('size-3.5', k.text)} />
+            </span>
+          ) : (
+            <span className="flex size-6 shrink-0 items-center justify-center rounded-md border border-warn/25 bg-warn/10">
+              <Fence className="size-3.5 text-warn" />
+            </span>
+          )}
+          <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{title}</span>
+          <ChevronRight
+            className={cn('size-3.5 shrink-0 text-muted-foreground transition-transform', selected && 'rotate-90')}
+          />
+        </button>
+        <EditButton size="icon-xs" variant="ghost" aria-label="Delete" title="Delete" onClick={onDelete}>
           <Trash />
         </EditButton>
       </div>
-      {children}
+      {selected && <div className="space-y-2.5 border-t px-3.5 pt-3 pb-3.5">{children}</div>}
     </div>
   )
 }
@@ -157,6 +174,7 @@ function CharacterRefPicker({ value, onChange }: { value: DocRef; onChange: (ref
 function EnvironmentEditor() {
   const { id } = Route.useParams()
   const editor = useDocEditor(id, 'environment')
+  const sidePanel = useSidePanel('environment-properties')
   const { draft, update } = editor
   const { data: characterDocs = [] } = useQuery(docsQuery('character'))
   const { characters } = useCharacters(draft.placements.map((p) => p.character))
@@ -192,6 +210,10 @@ function EnvironmentEditor() {
         const x = d.sensors.find((s) => s.deviceId === c.id)
         if (x && c.position) x.position = c.position
         if (x && c.range !== undefined) x.range = c.range
+      } else if (c.kind === 'console') {
+        const x = d.consoles.find((k) => k.deviceId === c.id)
+        if (x && c.position) x.position = c.position
+        if (x && c.rotationY !== undefined) x.rotationY = c.rotationY
       } else if (c.kind === 'scenery') {
         const item = d.scenery.find((x) => x.id === c.id)
         if (item && c.position) item.position = c.position
@@ -237,6 +259,7 @@ function EnvironmentEditor() {
           issues={issues}
           embedded
           subtitle={`Layout · ${environmentDevices(draft).length} devices · ${id}`}
+          end={<SidePanelToggle panel={sidePanel} label="properties" />}
         >
           <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Switch checked={footprints} onCheckedChange={setFootprints} size="sm" disabled={false} /> Footprints
@@ -303,15 +326,16 @@ function EnvironmentEditor() {
             </Viewport>
           </ResizablePanel>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize="40%" minSize="25%">
+          <ResizablePanel minSize="25%" {...sidePanel.panelProps('40%')}>
             <Tabs value={tab} onValueChange={setTab} className="flex h-full flex-col gap-0">
               <div className="overflow-x-auto border-b px-3">
-                <TabsList variant="line" className="h-11 flex-nowrap">
+                <TabsList variant="line" className="h-auto min-h-11 flex-wrap justify-start">
                   <TabsTrigger value="stage">Stage</TabsTrigger>
                   <TabsTrigger value="figures">Figures ({draft.placements.length})</TabsTrigger>
                   <TabsTrigger value="lighting">Lighting ({draft.lights.length})</TabsTrigger>
                   <TabsTrigger value="audio">Audio ({draft.audio.length})</TabsTrigger>
                   <TabsTrigger value="sensors">Sensors ({draft.sensors.length})</TabsTrigger>
+                  <TabsTrigger value="consoles">Consoles ({(draft.consoles ?? []).length})</TabsTrigger>
                   <TabsTrigger value="scenery">Scenery ({(draft.scenery ?? []).length})</TabsTrigger>
                   <TabsTrigger value="issues">Issues ({issues.length})</TabsTrigger>
                   <TabsTrigger value="revisions">Revisions</TabsTrigger>
@@ -495,7 +519,7 @@ function EnvironmentEditor() {
                     {draft.placements.map((p, i) => (
                       <ItemCard
                         key={`p-${i}`}
-                        title={p.deviceId}
+                        title={<DeviceTitle name={p.name} id={p.deviceId} />}
                         kind="doll"
                         selected={isSel('placement', p.deviceId)}
                         onSelect={() => setSelected({ kind: 'placement', id: p.deviceId })}
@@ -631,7 +655,7 @@ function EnvironmentEditor() {
                     {draft.lights.map((l, i) => (
                       <ItemCard
                         key={`l-${i}`}
-                        title={l.deviceId}
+                        title={<DeviceTitle name={l.name} id={l.deviceId} />}
                         kind="light"
                         selected={isSel('light', l.deviceId)}
                         onSelect={() => setSelected({ kind: 'light', id: l.deviceId })}
@@ -706,6 +730,96 @@ function EnvironmentEditor() {
                         </Row>
                       </ItemCard>
                     ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="consoles" className="min-h-0 flex-1">
+                <ScrollArea className="h-full">
+                  <div className="space-y-3 p-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] text-muted-foreground">
+                        RUN starts the selected show; E-STOP stops everything, even without the cloud.
+                      </p>
+                      <EditButton
+                        size="xs"
+                        variant="outline"
+                        onClick={() =>
+                          edit((d) => {
+                            const deviceId = uniqueId(d as Env, 'console')
+                            d.consoles ??= []
+                            d.consoles.push({
+                              deviceId,
+                              name: 'Operator console',
+                              position: [d.stage.max[0] - 0.8, d.stage.min[1], d.stage.max[2] + 1],
+                              rotationY: 0,
+                            })
+                            setSelected({ kind: 'console', id: deviceId })
+                          })
+                        }
+                      >
+                        <Plus /> Console
+                      </EditButton>
+                    </div>
+                    {(draft.consoles ?? []).map((c, i) => (
+                      <ItemCard
+                        key={`c-${i}`}
+                        title={<DeviceTitle name={c.name} id={c.deviceId} />}
+                        kind="console"
+                        selected={isSel('console', c.deviceId)}
+                        onSelect={() => setSelected({ kind: 'console', id: c.deviceId })}
+                        onDelete={() => remove('consoles', i)}
+                      >
+                        <Row label="Device id">
+                          <Input
+                            className="h-7 font-mono text-xs"
+                            value={c.deviceId}
+                            onChange={(e) =>
+                              edit((d) => {
+                                ;(d.consoles[i] as Env['consoles'][number]).deviceId = e.target.value
+                              }, `c${i}id`)
+                            }
+                          />
+                        </Row>
+                        <Row label="Label">
+                          <Input
+                            className="h-7 text-xs"
+                            value={c.name}
+                            onChange={(e) =>
+                              edit((d) => {
+                                ;(d.consoles[i] as Env['consoles'][number]).name = e.target.value
+                              }, `c${i}n`)
+                            }
+                          />
+                        </Row>
+                        <Row label="Position (m)">
+                          <Vec3Input
+                            value={c.position}
+                            onChange={(v) =>
+                              edit((d) => {
+                                ;(d.consoles[i] as Env['consoles'][number]).position = v
+                              }, `c${i}p`)
+                            }
+                          />
+                        </Row>
+                        <Row label="Yaw (°)">
+                          <NumberInput
+                            step={5}
+                            value={c.rotationY}
+                            onChange={(v) =>
+                              edit((d) => {
+                                ;(d.consoles[i] as Env['consoles'][number]).rotationY = v
+                              }, `c${i}rot`)
+                            }
+                          />
+                        </Row>
+                      </ItemCard>
+                    ))}
+                    {(draft.consoles ?? []).length === 0 && (
+                      <p className="rounded-lg border border-dashed px-3 py-6 text-center text-xs text-muted-foreground">
+                        No console yet. Add one where the operator stands.
+                      </p>
+                    )}
                   </div>
                 </ScrollArea>
               </TabsContent>
@@ -848,7 +962,7 @@ function EnvironmentEditor() {
                     {draft.audio.map((a, i) => (
                       <ItemCard
                         key={`a-${i}`}
-                        title={a.deviceId}
+                        title={<DeviceTitle name={a.name} id={a.deviceId} />}
                         kind="audio"
                         selected={isSel('audio', a.deviceId)}
                         onSelect={() => setSelected({ kind: 'audio', id: a.deviceId })}
@@ -934,7 +1048,7 @@ function EnvironmentEditor() {
                     {draft.sensors.map((s, i) => (
                       <ItemCard
                         key={`s-${i}`}
-                        title={s.deviceId}
+                        title={<DeviceTitle name={s.name} id={s.deviceId} />}
                         kind="sensor"
                         selected={isSel('sensor', s.deviceId)}
                         onSelect={() => setSelected({ kind: 'sensor', id: s.deviceId })}
@@ -1020,7 +1134,7 @@ function EnvironmentEditor() {
                 />
               </TabsContent>
               <TabsContent value="revisions" className="min-h-0 flex-1 overflow-auto">
-                <RevisionsPanel docId={id} kind="environment" />
+                <RevisionsPanel docId={id} kind="environment" editor={editor} />
               </TabsContent>
             </Tabs>
           </ResizablePanel>

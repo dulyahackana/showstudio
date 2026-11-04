@@ -7,7 +7,8 @@ import { DataTable } from '@/components/data-table'
 import { PageBody, PageHeader } from '@/components/page'
 import { ToneBadge } from '@/components/status'
 import { api } from '@/lib/api'
-import { shortSha } from '@/lib/format'
+import { describeAudit } from '@/lib/audit-text'
+import { shortSha, timeAgo } from '@/lib/format'
 import { qk } from '@/lib/queries'
 
 export const Route = createFileRoute('/audit')({ component: AuditPage })
@@ -17,32 +18,31 @@ const columns: ColumnDef<AuditEntry>[] = [
   {
     header: 'When',
     accessorKey: 'at',
-    cell: ({ row }) => <span className="text-xs">{new Date(row.original.at).toLocaleString()}</span>,
-  },
-  { header: 'Who', accessorKey: 'actor' },
-  {
-    header: 'Action',
-    accessorKey: 'action',
-    cell: ({ row }) => <span className="font-mono text-xs">{row.original.action}</span>,
-  },
-  {
-    header: 'Subject',
-    id: 'subject',
     cell: ({ row }) => (
-      <span className="font-mono text-xs">
-        {row.original.entity}:{row.original.entityId}
+      <span className="text-xs whitespace-nowrap" title={new Date(row.original.at).toLocaleString()}>
+        {timeAgo(row.original.at)}
       </span>
     ),
   },
   {
-    header: 'Details',
-    id: 'details',
+    header: 'What happened',
+    id: 'what',
+    cell: ({ row }) => (
+      <span className="text-sm">
+        <span className="font-medium capitalize">{row.original.actor}</span>{' '}
+        <span className="text-muted-foreground">{describeAudit(row.original, { subject: true })}</span>
+      </span>
+    ),
+  },
+  {
+    header: 'Event',
+    id: 'event',
     cell: ({ row }) => (
       <code
-        className="block max-w-md truncate text-[11px] text-muted-foreground"
-        title={JSON.stringify(row.original.details)}
+        className="block max-w-xs truncate text-[11px] text-muted-foreground"
+        title={`${row.original.entity}:${row.original.entityId}\n${JSON.stringify(row.original.details, null, 2)}`}
       >
-        {JSON.stringify(row.original.details)}
+        {row.original.action}
       </code>
     ),
   },
@@ -71,7 +71,7 @@ function AuditPage() {
       <PageHeader
         eyebrow="Admin"
         title="Audit log"
-        description="Append-only and hash-chained: every publish, approval, deployment, launch and e-stop, with who did it."
+        description="Every publish, approval, deploy, launch and e-stop. Append-only, hash-chained."
         actions={
           verify &&
           (verify.ok ? (

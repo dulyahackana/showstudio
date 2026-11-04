@@ -2,7 +2,7 @@ import { join, resolve } from 'node:path'
 import multipart from '@fastify/multipart'
 import fastifyStatic from '@fastify/static'
 import websocket from '@fastify/websocket'
-import { API_PREFIX, type Asset, type AssetKind, type ProjectPermission } from '@studio/schema'
+import { API_PREFIX, type Asset, type AssetKind, type ProjectPermission, ShowBundle } from '@studio/schema'
 import { buildAsyncApi, buildOpenApi } from '@studio/schema/openapi'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { AuditLog } from './audit.ts'
@@ -14,6 +14,7 @@ import { Metrics } from './metrics.ts'
 import { HttpProblem, problems } from './problems.ts'
 import { issueSession, loadSigner, type Signer } from './security.ts'
 import { FleetService } from './services/fleet.ts'
+import { buildPackage, packageFileName } from './services/packages.ts'
 import { LocationService, ProjectService, WORKSPACE } from './services/projects.ts'
 import { StudioService } from './services/studio.ts'
 
@@ -166,9 +167,19 @@ export async function buildApp(
   registerRoute(app, config, 'getWorkspace', async () => WORKSPACE)
   registerRoute(app, config, 'listLocations', async () => locations.list())
   registerRoute(app, config, 'createLocation', async ({ body }, ctx) => locations.create(body, actor(ctx)))
-  registerRoute(app, config, 'listProjects', async (_input, ctx) => projects.list(actor(ctx)))
+  registerRoute(app, config, 'listProjects', async ({ query }, ctx) => projects.list(actor(ctx), query.status))
   registerRoute(app, config, 'createProject', async ({ body }, ctx) => projects.create(body, actor(ctx)))
   registerRoute(app, config, 'getProject', async ({ params }, ctx) => projects.get(params.projectId, actor(ctx)))
+  registerRoute(app, config, 'deleteProject', async ({ params }, ctx) => {
+    await projects.require(actor(ctx), params.projectId, 'manage')
+    await fleet.assertNotLive(params.projectId)
+    const project = await projects.delete(params.projectId, actor(ctx))
+    await fleet.undeployShow(params.projectId)
+    return project
+  })
+  registerRoute(app, config, 'restoreProject', async ({ params }, ctx) =>
+    projects.restore(params.projectId, actor(ctx)),
+  )
   registerRoute(app, config, 'setProjectMember', async ({ params, body }, ctx) =>
     projects.setMember(params.projectId, params.user, body.role, actor(ctx)),
   )
@@ -212,6 +223,46 @@ export async function buildApp(
   registerRoute(app, config, 'getRevision', async ({ params }, ctx) => {
     await canDoc(ctx, params.id, 'read')
     return studio.getRevision(params.id, params.revision)
+  })
+  registerRoute(app, config, 'restoreRevision', async ({ params, body }, ctx) => {
+    await canDoc(ctx, params.id, 'edit')
+    return studio.restoreRevision(params.id, params.revision, body.draftVersion, actor(ctx))
+  })
+  // The installable artifact goes to the people who may deploy it.
+  registerRoute(app, config, 'downloadPackage', async ({ params }, ctx) => {
+    await canDoc(ctx, params.id, 'operate')
+    const revision = await studio.getRevision(params.id, params.revision)
+    if (revision.kind !== 'show' || !revision.bundleSha256)
+      throw problems.badRequest(`${params.id}@${params.revision} is not a show revision`)
+    if (revision.status !== 'approved' || !revision.signed)
+      throw problems.precondition('Only safety-approved, signed revisions can be packaged', [
+        `${params.id}@${params.revision} is ${revision.status}`,
+      ])
+    const bundle = await fleet.bundleBody(revision.bundleSha256)
+    const ids = Object.values(ShowBundle.parse(JSON.parse(bundle.body)).devices).flatMap((p) =>
+      p.kind === 'audio' ? Object.keys(p.assets) : [],
+    )
+    const assets = []
+    for (const id of new Set(ids)) {
+      const [row] = await db.query<{ mime: string }>('select mime from assets where id = $1', [id])
+      const bytes = blobs.get(id)
+      if (!row || !bytes) throw problems.notFound(`Asset ${id} not found`)
+      assets.push({ id, mime: row.mime, bytes })
+    }
+    const body = buildPackage({
+      revision,
+      bundle: { body: bundle.body, signature: bundle.signature ?? '' },
+      assets,
+      publicKeyPem: signer.publicKeyPem,
+    })
+    const user = actor(ctx)
+    await audit.append(user.name, 'show.package', 'show', `${params.id}@${params.revision}`, {
+      sha256: revision.bundleSha256,
+    })
+    return ctx.reply
+      .header('content-disposition', `attachment; filename="${packageFileName(params.id, params.revision)}"`)
+      .type('application/zip')
+      .send(body)
   })
   registerRoute(app, config, 'approveRevision', async ({ params, body }, ctx) => {
     await canDoc(ctx, params.id, 'review')
@@ -262,6 +313,11 @@ export async function buildApp(
   registerRoute(app, config, 'simulateSensor', async ({ params, body }, ctx) => {
     await canDoc(ctx, body.environmentId, 'read')
     fleet.simulateSensor(body.environmentId, params.deviceId, body.event)
+    return { ok: true as const }
+  })
+  registerRoute(app, config, 'simulateConsole', async ({ params, body }, ctx) => {
+    await canDoc(ctx, body.environmentId, 'operate')
+    fleet.simulateConsole(body.environmentId, params.deviceId, body.button)
     return { ok: true as const }
   })
   app.get(`${API_PREFIX}/devices/ws`, { websocket: true }, (socket) => fleet.handleSocket(socket))

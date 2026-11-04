@@ -7,11 +7,15 @@ const STATE_COLORS := {
 	"ready": "#34d399",
 	"armed": "#f7d24f",
 	"running": "#5cc8ea",
+	"standby": "#f472b6",
 	"estopped": "#f0554b",
 	"faulted": "#f0554b",
 }
 const LINK_COLORS := {"online": "#34d399", "connecting": "#f7d24f", "offline": "#8b95a7", "replaced": "#f0554b"}
-const KIND_GLYPH := {"doll": "◆", "light": "✦", "audio": "♪", "sensor": "◎"}
+const KIND_GLYPH := {"doll": "◆", "light": "✦", "audio": "♪", "sensor": "◎", "console": "▣"}
+
+const CONTROLS := "WASD walk · click sensor · RMB orbit · wheel zoom · F frame · Tab details · L log · H hide"
+const CONSOLE_CONTROLS := "Console: click its buttons, or Enter run · N next show · Space e-stop · R reset · C look"
 
 var _main: Node
 var _panel: PanelContainer
@@ -46,7 +50,8 @@ func setup(main: Node) -> void:
 	_log_panel.visible = false
 
 	_hint = Label.new()
-	_hint.text = "WASD walk · click sensor · RMB orbit · wheel zoom · F frame · Tab details · L log · H hide"
+	_hint.text = CONTROLS
+	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_hint.add_theme_font_size_override("font_size", 11)
 	_hint.add_theme_color_override("font_color", Color(1, 1, 1, 0.45))
 	_hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
@@ -134,8 +139,12 @@ func _render() -> String:
 	)
 	if _error != "":
 		out.append("[color=#f0554b]%s[/color]" % _error.replace("[", "[lb]"))
-	if lead.is_empty():
-		out.append("[color=#8b95a7]idle · deploy and launch from the studio[/color]")
+	var resting = devices.filter(func(d): return not d.standby.is_empty())
+	if lead.is_empty() and not resting.is_empty():
+		var show_name: String = resting[0].standby["bundle"]["show"]["name"]
+		out.append("[color=#f472b6]◎[/color] standby · %s  [color=#aab4c5]answering guests[/color]" % show_name)
+	elif lead.is_empty():
+		out.append("[color=#8b95a7]idle · launch from the studio or the console[/color]")
 	else:
 		var d = lead[0]
 		var bundle: Dictionary = d.active["bundle"]
@@ -147,9 +156,20 @@ func _render() -> String:
 		)
 		out.append("[color=#5cc8ea]▶[/color] %s  [color=#aab4c5]%s[/color]" % [bundle["show"]["name"], phase])
 		out.append("[color=#5cc8ea]%s[/color]" % bar)
-		var started: Array = _main.bus.started_behaviors()
-		if not started.is_empty():
-			out.append("[color=#f472b6]◎ %s[/color]" % ", ".join(started.map(func(s): return s["id"])))
+	# The console's display, mirrored so it reads without zooming in.
+	var consoles := devices.filter(func(d): return d.kind == "console")
+	_hint.text = (CONSOLE_CONTROLS + "\n" + CONTROLS) if not consoles.is_empty() else CONTROLS
+	if consoles.is_empty() and not devices.is_empty():
+		out.append("[color=#8b95a7]▣ no operator console in this layout · add one in the studio: Layout → Consoles, publish, restart[/color]")
+	for c in consoles:
+		var lines: PackedStringArray = c.display_lines()
+		var color := "#f0554b" if c.estop_pressed or c.estopped else "#7dd3fc"
+		out.append("[color=%s]▣[/color] %s  [color=#aab4c5]%s[/color]" % [color, lines[0], lines[1].replace("[", "[lb]")])
+		if lines[2] != "":
+			out.append("[color=#f0a3a0]  %s[/color]" % lines[2].replace("[", "[lb]"))
+	var playing: Array = _main.bus.playing_behaviors()
+	if not playing.is_empty():
+		out.append("[color=#f472b6]◎ %s[/color]" % ", ".join(playing.map(func(s): return s["id"])))
 	if _expanded:
 		out.append("")
 		for d in devices:

@@ -28,10 +28,20 @@ var estopped := false
 var fault = null
 ## {sha256, bundle, start_local, started, last_audio_t} while a show is armed or running.
 var active := {}
+## The same between shows, after a show completed: its standby responses on a clock that
+## starts at the show's end.
+var standby := {}
 ## sha256 -> {info: StagedShow, bundle: Dictionary or null}
 var staged := {}
 var pose := {}
 var light := {}
+## Consoles: the E-STOP mushroom is pushed in (it stays in until twisted out).
+var estop_pressed := false
+## Consoles: what the display shows (a PanelMsg from the fleet manager), the prepared show
+## the operator selected, and the last refusal.
+var panel := {}
+var selected := ""
+var notice := ""
 
 var _api_url: String
 var _environment_id: String
@@ -77,6 +87,8 @@ func setup(options: Dictionary) -> void:
 	name = device_id
 	_home()
 	_bus.behavior_started.connect(_on_behavior_started)
+	_bus.estop_pressed.connect(_on_bus_estop)
+	_bus.reset_relayed.connect(_on_bus_reset)
 
 
 func _ready() -> void:
@@ -95,8 +107,12 @@ func state() -> String:
 		return "estopped"
 	if fault != null:
 		return "faulted"
+	if kind == "console":
+		return "ready"
 	if not active.is_empty():
 		return "armed" if Net.now_ms() < active["start_local"] else "running"
+	if not standby.is_empty():
+		return "standby"
 	for s in staged.values():
 		if s["info"]["status"] == "staged":
 			return "ready"
@@ -204,7 +220,10 @@ func _send_status() -> void:
 			"startAt": roundf(active["start_local"] + _offset_ms),
 			"showTimeMs": roundf(maxf(0.0, show_time_ms())),
 		}
-	_send({"type": "status", "state": state(), "staged": staged_shows(), "active": a, "fault": fault})
+	var status := {"type": "status", "state": state(), "staged": staged_shows(), "active": a, "fault": fault}
+	if kind == "console":
+		status["estopPressed"] = estop_pressed
+	_send(status)
 	changed.emit()
 
 
@@ -237,6 +256,8 @@ func _on_message(text: String) -> void:
 		"deploy":
 			_deploy(msg)
 		"remove":
+			if standby.get("sha256") == msg["sha256"]:
+				_finish("removed from this controller")
 			if active.get("sha256") != msg["sha256"]:
 				staged.erase(msg["sha256"])
 				DirAccess.remove_absolute(_store_dir.path_join(msg["sha256"] + ".json"))
@@ -256,6 +277,9 @@ func _on_message(text: String) -> void:
 		"reset":
 			estopped = false
 			_log("e-stop reset")
+			# Consoles carry the reset over the park network, like the e-stop itself.
+			if kind == "console":
+				_bus.reset_relayed.emit(device_id)
 			_ack(msg["opId"])
 			_send_status()
 		"simulateSensor":
@@ -264,8 +288,124 @@ func _on_message(text: String) -> void:
 				return
 			fire_sensor(msg["event"])
 			_ack(msg["opId"])
+		"panel":
+			panel = msg
+			# Keep the operator's choice while it is still prepared; otherwise the first good-to-go show.
+			var shows: Array = msg["prepared"]
+			if not shows.any(func(p): return p["sha256"] == selected):
+				var ready := shows.filter(func(p): return p["goodToGo"])
+				selected = (ready[0] if not ready.is_empty() else shows[0])["sha256"] if not shows.is_empty() else ""
+			changed.emit()
+		"simulateConsole":
+			if kind != "console":
+				_ack(msg["opId"], "not a console")
+				return
+			press(msg["button"])
+			_ack(msg["opId"])
 		"error":
+			if msg["code"] == "console-refused":
+				notice = msg["message"]
+				changed.emit()
 			_log("fleet manager error: %s %s" % [msg["code"], msg["message"]])
+
+
+# ---- operator console -----------------------------------------------------------------
+
+
+## Consoles: an operator presses a button (the 3D panel, the keyboard or the studio's
+## simulateConsole). E-STOP latches every controller over the park network first, then
+## tells the fleet manager; the mushroom stays in until twisted out ("release"). RUN and
+## RESET ask the fleet manager, which may refuse: the refusal shows on the display.
+func press(button: String) -> void:
+	if kind != "console":
+		return
+	notice = ""
+	match button:
+		"estop":
+			if estop_pressed:
+				return
+			estop_pressed = true
+			_log("E-STOP pressed")
+			_bus.estop_pressed.emit(device_id, "E-STOP pressed on %s" % device_id)
+			_report("estop")
+			_send_status()
+		"release":
+			if not estop_pressed:
+				return
+			estop_pressed = false
+			_log("E-STOP twisted out")
+			_send_status()
+		"select":
+			var shows: Array = panel.get("prepared", [])
+			if not shows.is_empty():
+				var i := shows.map(func(p): return p["sha256"]).find(selected)
+				selected = shows[(i + 1) % shows.size()]["sha256"]
+		"run":
+			if estop_pressed:
+				notice = "Twist the E-STOP out and reset first"
+			elif link != "online":
+				notice = "Studio unreachable: starting needs every controller checked"
+			elif selected == "":
+				notice = "No prepared show"
+			else:
+				_report("run", selected)
+		"reset":
+			if estop_pressed:
+				notice = "Twist the E-STOP out first"
+			elif link != "online":
+				notice = "Studio unreachable: reset needs the fleet manager"
+			else:
+				_report("reset")
+	changed.emit()
+
+
+## Consoles: the three display lines, from the panel state the fleet manager sends.
+func display_lines() -> PackedStringArray:
+	var head := "READY"
+	var run = panel.get("run")
+	if estop_pressed:
+		head = "E-STOP PRESSED - twist out, then RESET"
+	elif estopped or panel.get("estop", {}).get("active", false):
+		head = "E-STOP LATCHED - press RESET"
+	elif link != "online":
+		head = "OFFLINE - E-STOP still works"
+	elif run != null:
+		var t: float = Net.now_ms() + _offset_ms - float(run["startAt"])
+		head = (
+			"STARTING  T-%.1f s" % (-t / 1000.0)
+			if t < 0.0
+			else "RUNNING  %s / %s" % [_mmss(t), _mmss(float(run["durationMs"]))]
+		)
+	var show := "No prepared show"
+	for p in panel.get("prepared", []):
+		if p["sha256"] == selected:
+			show = "> %s r%d  %s" % [p["name"], int(p["revision"]), "good to go" if p["goodToGo"] else "staging..."]
+	return PackedStringArray([head, show, notice])
+
+
+func _report(action: String, sha = null) -> void:
+	_send({"type": "console", "action": action, "sha256": sha, "at": roundf(Net.now_ms() + _offset_ms)})
+
+
+func _on_bus_estop(_by: String, reason: String) -> void:
+	if estopped:
+		return
+	estopped = true
+	_finish("E-STOP: %s" % reason)
+	_send_status()
+
+
+func _on_bus_reset(by: String) -> void:
+	if not estopped or by == device_id:
+		return
+	estopped = false
+	_log("e-stop reset (relayed by %s)" % by)
+	_send_status()
+
+
+static func _mmss(ms: float) -> String:
+	var s := int(maxf(0.0, ms) / 1000.0)
+	return "%d:%02d" % [s / 60, s % 60]
 
 
 # ---- staging ------------------------------------------------------------------------
@@ -388,6 +528,7 @@ func _launch(op_id: String, sha: String, start_at: float) -> void:
 	if refusal != "":
 		_ack(op_id, refusal)
 		return
+	_finish("a show was launched")  # ends standby
 	var bundle: Dictionary = entry["bundle"]
 	var start_local := start_at - _offset_ms
 	active = {"sha256": sha, "bundle": bundle, "start_local": start_local, "started": [], "last_audio_t": -1.0}
@@ -398,39 +539,46 @@ func _launch(op_id: String, sha: String, start_at: float) -> void:
 
 
 func _on_behavior_started(sha: String, behavior_id: String, start_at: float) -> void:
-	if active.is_empty() or active["sha256"] != sha:
+	var live := active if not active.is_empty() else standby
+	if live.is_empty() or live["sha256"] != sha:
 		return
-	var schedule := Playback.find_behavior(active["bundle"], behavior_id)
+	var schedule := Playback.find_behavior(live["bundle"], behavior_id)
 	if not schedule.is_empty() and device_id in schedule["devices"]:
-		active["started"].append({"id": behavior_id, "startAt": start_at})
+		live["started"].append({"id": behavior_id, "startAt": start_at})
 
 
 func _tick() -> void:
 	if active.is_empty():
+		if not standby.is_empty():
+			_output(standby, Net.now_ms() - float(standby["start_local"]))
 		return
 	var t := show_time_ms()
 	if t < 0.0:
 		return
-	var bundle: Dictionary = active["bundle"]
-	if t >= float(bundle["durationMs"]):
+	if t >= float(active["bundle"]["durationMs"]):
 		_finish("completed")
 		_send_status()
 		return
+	_output(active, t)
+
+
+func _output(live: Dictionary, t: float) -> void:
+	var bundle: Dictionary = live["bundle"]
 	var payload: Dictionary = bundle["devices"][device_id]
-	var behavior := Playback.active_behavior_for(bundle, device_id, t, active["started"])
+	var behavior := Playback.active_behavior_for(bundle, device_id, t, live["started"])
 	match kind:
 		"doll":
 			pose = Playback.sample_doll_pose(payload, t, behavior)
 		"light":
 			light = Playback.sample_light_state(payload, t, behavior)
 		"audio":
-			for e in Playback.audio_events_between(payload, bundle, active["last_audio_t"], t, active["started"]):
+			for e in Playback.audio_events_between(payload, bundle, live["last_audio_t"], t, live["started"]):
 				var cue: Dictionary = e["cue"]
 				_log("♪ %s (%s dBFS) at %d ms" % [cue["label"], cue["volumeDb"], int(e["at"])])
 				# The controller enforces its own ceiling, whatever the bundle says.
 				var level := minf(float(cue["volumeDb"]), float(payload["maxVolumeDb"]))
 				cue_started.emit(device_id, cue.merged({"volumeDb": level}, true), _audio_bytes(cue["assetId"]), (t - e["at"]) / 1000.0)
-			active["last_audio_t"] = t
+			live["last_audio_t"] = t
 
 
 func _audio_bytes(asset_id: String) -> PackedByteArray:
@@ -439,15 +587,32 @@ func _audio_bytes(asset_id: String) -> PackedByteArray:
 	return _audio[asset_id]
 
 
+## Ends the run (a completed show may go on in standby) or, with no run, ends standby.
 func _finish(reason: String) -> void:
-	if active.is_empty():
+	var live := active if not active.is_empty() else standby
+	if live.is_empty():
 		return
-	_bus.run_ended.emit(active["sha256"])
-	_log("%s: %s" % [active["bundle"]["show"]["name"], reason])
+	var completed := not active.is_empty() and reason == "completed"
+	var what: String = live["bundle"]["show"]["name"]
+	if active.is_empty():
+		what = "standby (%s)" % what
 	active = {}
+	standby = {}
+	_bus.run_ended.emit(live["sha256"], completed)
+	_log("%s: %s" % [what, reason])
 	# Real controllers home at reduced speed; the sim snaps to home.
 	_home()
 	playback_finished.emit(device_id)
+	var quiet := Playback.standby_bundle(live["bundle"]) if completed else {}
+	if not quiet.is_empty():
+		standby = {
+			"sha256": live["sha256"],
+			"bundle": quiet,
+			"start_local": float(live["start_local"]) + float(live["bundle"]["durationMs"]),
+			"started": [],
+			"last_audio_t": -1.0,
+		}
+		_log("standby: answering guests between shows")
 
 
 func _home() -> void:

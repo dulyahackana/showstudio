@@ -18,7 +18,7 @@ const write = (file: string, data: unknown) => {
 write('openapi.json', buildOpenApi())
 write('asyncapi.json', buildAsyncApi())
 const schemas = componentSchemas()
-for (const id of ['CharacterDefinition', 'EnvironmentDefinition', 'ShowDefinition', 'ShowBundle']) {
+for (const id of ['CharacterDefinition', 'EnvironmentDefinition', 'ShowDefinition', 'ShowBundle', 'PackageManifest']) {
   write(`json-schema/${id}.json`, {
     $schema: 'https://json-schema.org/draft/2020-12/schema',
     $id: `${id}.json`,

@@ -115,6 +115,7 @@ export function validateEnvironment(env: EnvironmentDefinition, ctx: Environment
     ...env.lights.map((l, i): [string, Path] => [l.deviceId, ['lights', i]]),
     ...env.audio.map((a, i): [string, Path] => [a.deviceId, ['audio', i]]),
     ...env.sensors.map((s, i): [string, Path] => [s.deviceId, ['sensors', i]]),
+    ...(env.consoles ?? []).map((c, i): [string, Path] => [c.deviceId, ['consoles', i]]),
   ]
   for (const [id, path] of allDevices) {
     ids.set(id, (ids.get(id) ?? 0) + 1)
@@ -123,6 +124,8 @@ export function validateEnvironment(env: EnvironmentDefinition, ctx: Environment
   }
 
   if (env.placements.length === 0) out.warn('no-figures', 'No figures placed in this environment', ['placements'])
+  if ((env.consoles ?? []).length === 0)
+    out.warn('no-console', 'No operator console: nobody on site can start the show or press its e-stop', ['consoles'])
   const boxes: { id: string; box: Box }[] = []
   env.placements.forEach((p, i) => {
     const path = ['placements', i]

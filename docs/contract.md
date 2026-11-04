@@ -90,6 +90,18 @@ Close codes: `4001` hello timeout, `4002` hello required, `4003` protocol unsupp
 
 **Offline guarantees.** After `launch`, the cloud is out of the loop: devices play from their local copy, sensor responses are decided by the park-local show controller. Losing the fleet gateway mid-show does not stop the show (tested). A device that reconnects is brought back in line (latched e-stop re-sent; stopped runs stopped).
 
+**Offline install package** (`GET /docs/{id}/revisions/{revision}/package`, people who may deploy the show). It is a zip for a controller the fleet manager cannot reach, or for the release archive. It holds:
+- `bundle.json`: the exact signed bytes.
+- `bundle.sig`: the signature.
+- `audio/<sha256>.<ext>`: the speakers' files.
+- `show.json`: the source definition.
+- `manifest.json`: an index, [`PackageManifest`](../contracts/json-schema/PackageManifest.json).
+- `README.txt`: how to check it by hand with `shasum` and `openssl`.
+
+Only approved, signed revisions are packaged. The package is deterministic (the same revision always gives the same bytes), and every download is audited (`show.package`). The manifest is only an index: a controller still verifies the hash, the signature against its own pinned key, the schema, its limits and every audio hash, as for a network deploy. While connected, the fleet manager stays the source of truth.
+
+**Revert** (`POST /docs/{id}/revisions/{revision}/restore`, editors). An earlier revision becomes the draft again, with optimistic concurrency on `draftVersion`, and is audited as `draft.restore`. Published revisions never change, so a revert is a new revision and goes through safety review. Rolling the attraction back without new work is just a deploy of an older approved revision.
+
 ## Bundle (what devices receive)
 
 ```jsonc

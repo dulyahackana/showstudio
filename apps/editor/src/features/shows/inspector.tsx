@@ -11,7 +11,8 @@ import {
 } from '@studio/schema'
 import { useSelector } from '@tanstack/react-store'
 import type { Draft } from 'immer'
-import { Bot, Keyboard, Plus, Trash } from 'lucide-react'
+import { Bot, ChevronRight, Keyboard, Plus, Trash } from 'lucide-react'
+import { useState } from 'react'
 import { EditButton, useEditable } from '@/components/editable'
 import { ColorInput, NumberInput, Row } from '@/components/fields'
 import { Input } from '@/components/ui/input'
@@ -20,6 +21,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { formatMs } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import type { Playback } from './playback'
 import { clamp, clampKeyTime, draftKeys, keysOf, round, type Selection, upsertKey } from './timeline-math'
 
@@ -281,12 +283,22 @@ export function Inspector({
           </section>
         )}
 
-        {row && !key && row.kind !== 'motion' && (
+        {row && !key && (
           <EditButton
             size="sm"
-            variant="outline"
+            variant={row.kind === 'motion' ? 'default' : 'outline'}
             className="w-full"
+            data-testid="add-key-at-playhead"
             onClick={() => {
+              if (row.kind === 'motion') {
+                const joint = character?.joints.find((j) => j.name === row.joint)
+                const v = pose?.[row.joint] ?? joint?.home ?? 0
+                let index = 0
+                edit((tr) => {
+                  index = upsertKey(draftKeys(tr as Tracks, row) as MotionKey[], { t: at, v: round(v), interp: 'ease' })
+                })
+                onSelect({ row, index })
+              }
               if (row.kind === 'light') {
                 let index = 0
                 edit((tr) => {
@@ -302,7 +314,10 @@ export function Inspector({
             }}
             disabled={row.kind === 'audio'}
           >
-            <Plus /> {row.kind === 'audio' ? 'Double-click the lane to add a cue' : 'Add light key at playhead'}
+            <Plus />{' '}
+            {row.kind === 'audio'
+              ? 'Double-click the lane to add a cue'
+              : `Add ${row.kind === 'motion' ? row.joint : 'light'} key at ${formatMs(at)}`}
           </EditButton>
         )}
 
@@ -325,7 +340,7 @@ export function Inspector({
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-medium">{p.name}</span>
                       <span className="block font-mono text-[10px] text-muted-foreground">
-                        {p.deviceId} · {c?.joints.length ?? 0} joints
+                        {p.deviceId} · {c?.joints.length ?? 0} {c?.joints.length === 1 ? 'joint' : 'joints'}
                       </span>
                     </span>
                     <span className="text-muted-foreground">{editable ? 'Pose →' : 'Inspect →'}</span>
@@ -333,24 +348,58 @@ export function Inspector({
                 )
               })}
             </section>
-            <section className="space-y-2 rounded-lg border border-dashed p-3 text-muted-foreground">
-              <h3 className="flex items-center gap-1.5 font-medium text-foreground">
-                <Keyboard className="size-3.5" /> Shortcuts
-              </h3>
-              <ul className="space-y-1.5 leading-relaxed">
-                <li>Double-click a lane to add a key; drag a key to retime it, vertically to change its value.</li>
-                <li>
-                  <Kbd>Space</Kbd> play · <Kbd>⌫</Kbd> delete key · <Kbd>⌘Z</Kbd> undo · <Kbd>←</Kbd>
-                  <Kbd>→</Kbd> nudge
-                </li>
-                <li>
-                  Hold <Kbd>⇧</Kbd> to drag without snapping, <Kbd>⌥</Kbd> to change time only.
-                </li>
-              </ul>
-            </section>
+            {editable && <AnimateHelp />}
           </>
         )}
       </div>
     </ScrollArea>
+  )
+}
+
+/** The animating basics, folded away once read. Remembered in this browser. */
+function AnimateHelp() {
+  const [open, setOpen] = useState(() => {
+    try {
+      return localStorage.getItem('studio.help.animate') !== 'closed'
+    } catch {
+      return true
+    }
+  })
+  const toggle = () => {
+    setOpen(!open)
+    try {
+      localStorage.setItem('studio.help.animate', open ? 'closed' : 'open')
+    } catch {
+      /* storage unavailable */
+    }
+  }
+  return (
+    <section className="rounded-lg border text-muted-foreground">
+      <button
+        type="button"
+        onClick={toggle}
+        aria-expanded={open}
+        className="flex w-full items-center gap-1.5 px-3 py-2 text-left font-medium text-foreground"
+      >
+        <Keyboard className="size-3.5 text-muted-foreground" /> How to animate
+        <ChevronRight className={cn('ml-auto size-3.5 text-muted-foreground transition', open && 'rotate-90')} />
+      </button>
+      {open && (
+        <div className="space-y-2 border-t px-3 pt-2 pb-3">
+          <ol className="list-decimal space-y-1 pl-4 leading-relaxed">
+            <li>Move the playhead to a moment.</li>
+            <li>
+              <span className="text-foreground">Pose</span> a figure above: every joint you move becomes a key there. Or
+              hover a track and click <span className="text-foreground">◆</span>.
+            </li>
+            <li>Drag keys to retime them, up or down to change the value.</li>
+          </ol>
+          <p className="leading-relaxed">
+            <Kbd>Space</Kbd> play · <Kbd>⌫</Kbd> delete key · <Kbd>⌘Z</Kbd> undo · <Kbd>←</Kbd>
+            <Kbd>→</Kbd> nudge · <Kbd>⇧</Kbd> no snapping · <Kbd>⌥</Kbd> time only
+          </p>
+        </div>
+      )}
+    </section>
   )
 }

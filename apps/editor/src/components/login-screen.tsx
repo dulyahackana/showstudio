@@ -42,7 +42,7 @@ export function usePersonaLogin() {
 const ROLE_TONE: Record<string, string> = {
   alice: 'text-motion bg-motion/10 border-motion/25',
   sam: 'text-audio bg-audio/10 border-audio/25',
-  olga: 'text-light bg-light/10 border-light/25',
+  olga: 'text-sky-300 bg-sky-300/10 border-sky-300/25',
   admin: 'text-muted-foreground bg-muted border-border',
 }
 

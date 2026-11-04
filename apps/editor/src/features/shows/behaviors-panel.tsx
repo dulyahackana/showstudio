@@ -50,6 +50,7 @@ export function BehaviorsPanel({
         enabled: true,
         trigger: { sensorId: sensor.deviceId, event: SENSOR_EVENTS[sensor.type][0] ?? 'enter' },
         window: null,
+        standby: true,
         blendMs: 2000,
         cooldownMs: 5000,
         durationMs: 3000,
@@ -66,6 +67,7 @@ export function BehaviorsPanel({
           <p className="max-w-xl text-muted-foreground">
             Bounded reactions to guests, decided in the park by the local show controller (never the cloud). Each one
             blends in from wherever the figures are, plays a clip and blends back, so it is provably safe from any pose.
+            Responses marked "also between shows" keep answering after the show ends, until an operator ends standby.
           </p>
           <EditButton size="sm" variant="outline" onClick={add} disabled={!sensors.length} data-testid="add-behavior">
             <Plus /> Response
@@ -105,28 +107,31 @@ export function BehaviorsPanel({
                       }, 'name')
                     }
                   />
-                  {playing && <ToneBadge t="warn">playing</ToneBadge>}
-                  <div className="ml-auto flex items-center gap-1">
-                    <Switch
-                      checked={b.enabled}
-                      onCheckedChange={(v) =>
-                        set((x) => {
-                          x.enabled = v
-                        })
-                      }
-                      aria-label="Enabled"
-                    />
+                  {playing && <ToneBadge t="sensor">playing</ToneBadge>}
+                  <div className="ml-auto flex items-center gap-1.5">
+                    <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Switch
+                        checked={b.enabled}
+                        onCheckedChange={(v) =>
+                          set((x) => {
+                            x.enabled = v
+                          })
+                        }
+                        aria-label="Enabled"
+                      />
+                      {b.enabled ? 'On' : 'Off'}
+                    </label>
                     <Button
-                      size="icon-sm"
+                      size="sm"
                       variant="ghost"
-                      title="Trigger at the playhead"
+                      title="Play the show from the playhead and fire this sensor now"
                       disabled={target.kind !== 'main' || !b.enabled}
                       onClick={() => {
                         playback.trigger(b.trigger.sensorId, b.trigger.event)
                         playback.play()
                       }}
                     >
-                      <Zap />
+                      <Zap /> Test
                     </Button>
                     <Button
                       size="sm"
@@ -168,16 +173,13 @@ export function BehaviorsPanel({
                     </SelectTrigger>
                     <SelectContent>
                       {sensors.map((s) => (
-                        <SelectItem key={s.deviceId} value={s.deviceId}>
-                          {s.name}{' '}
-                          <span className="font-mono text-[10px] text-muted-foreground">
-                            {s.deviceId} · {s.type}
-                          </span>
+                        <SelectItem key={s.deviceId} value={s.deviceId} title={`Device id ${s.deviceId}`}>
+                          {s.name} <span className="text-muted-foreground">· {SENSOR_LABEL[s.type]}</span>
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <span className="text-muted-foreground">reports</span>
+                  <span className="text-muted-foreground">detects</span>
                   <Select
                     value={b.trigger.event}
                     onValueChange={(event) =>
@@ -192,7 +194,7 @@ export function BehaviorsPanel({
                     <SelectContent>
                       {(sensor ? SENSOR_EVENTS[sensor.type] : (['enter', 'exit', 'press'] as const)).map((e) => (
                         <SelectItem key={e} value={e}>
-                          {e}
+                          {EVENT_LABEL[e]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -205,9 +207,9 @@ export function BehaviorsPanel({
                           x.window = on ? { fromMs: 0, toMs: show.durationMs } : null
                         })
                       }
-                      aria-label="Limit to a window"
+                      aria-label="Only during part of the show"
                     />
-                    {b.window ? 'only between' : 'any time in the show'}
+                    only during part of the show
                   </span>
                   {b.window && (
                     <span className="flex items-center gap-1">
@@ -235,6 +237,22 @@ export function BehaviorsPanel({
                       <span className="text-muted-foreground">ms</span>
                     </span>
                   )}
+                  <span
+                    className="ml-2 flex items-center gap-1.5 text-muted-foreground"
+                    title="After the show ends the attraction stays in standby: figures rest at home and this response still answers guests, from home and back, until an operator ends standby or launches a show."
+                  >
+                    <Switch
+                      checked={b.standby ?? false}
+                      onCheckedChange={(on) =>
+                        set((x) => {
+                          x.standby = on
+                        })
+                      }
+                      aria-label="Also between shows"
+                      data-testid="behavior-standby"
+                    />
+                    also between shows
+                  </span>
                 </div>
 
                 <TimingDiagram blendMs={b.blendMs} durationMs={b.durationMs} cooldownMs={b.cooldownMs} />
@@ -324,3 +342,14 @@ function TimingDiagram({
 }
 
 const clampInt = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Math.round(v)))
+
+const SENSOR_LABEL: Record<keyof typeof SENSOR_EVENTS, string> = {
+  presence: 'presence sensor',
+  proximity: 'proximity sensor',
+  button: 'button',
+}
+const EVENT_LABEL: Record<SensorEvent, string> = {
+  enter: 'a guest enters',
+  exit: 'a guest leaves',
+  press: 'the button is pressed',
+}

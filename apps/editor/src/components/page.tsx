@@ -15,11 +15,11 @@ export function PageHeader({
   children?: ReactNode
 }) {
   return (
-    <header className="flex shrink-0 flex-wrap items-end justify-between gap-4 border-b bg-surface/50 px-8 pt-6 pb-5">
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-4 px-8 pt-7 pb-2">
       <div className="min-w-0">
-        {eyebrow && <div className="text-eyebrow mb-1.5">{eyebrow}</div>}
+        {eyebrow && <div className="text-eyebrow mb-1">{eyebrow}</div>}
         <h1 className="truncate text-2xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="mt-1 max-w-3xl text-sm text-muted-foreground">{description}</p>}
+        {description && <p className="mt-1 max-w-2xl truncate text-sm text-muted-foreground">{description}</p>}
         {children}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

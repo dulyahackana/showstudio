@@ -224,6 +224,30 @@ static func audio_events_between(
 	return events
 
 
+## The attraction between shows (port of standbyBundle): the show's standby responses
+## with the main timeline emptied (figures at home, fixtures dark, no cues) and no
+## show-time windows. Its clock starts when the show ends. {} when there are none.
+static func standby_bundle(bundle: Dictionary) -> Dictionary:
+	var behaviors := []
+	for b in bundle["behaviors"]:
+		if b.get("standby", false):
+			behaviors.append(b.merged({"window": null}, true))
+	if behaviors.is_empty():
+		return {}
+	var devices := {}
+	for device_id in bundle["devices"]:
+		var payload: Dictionary = bundle["devices"][device_id]
+		match payload["kind"]:
+			"doll":
+				payload = payload.merged({"motion": {}}, true)
+			"light":
+				payload = payload.merged({"keys": []}, true)
+			"audio":
+				payload = payload.merged({"cues": []}, true)
+		devices[device_id] = payload
+	return bundle.merged({"behaviors": behaviors, "devices": devices}, true)
+
+
 ## Whole-attraction state at show time t (HUD, conformance vectors).
 static func sample_frame(bundle: Dictionary, t: float, started: Array) -> Dictionary:
 	var poses := {}

@@ -1,14 +1,18 @@
 import type { Project, RevisionSummary, ShowDefinition } from '@studio/schema'
 import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { ArrowRight, MapPin, Mountain } from 'lucide-react'
+import { ArrowRight, Check, FileJson, MapPin, Mountain, Package } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { PageBody, Panel } from '@/components/page'
+import { PersonAvatar } from '@/components/person'
 import { RoleBadge, StageBadge } from '@/components/project-ui'
+import { useDownloadRevision } from '@/components/revisions-panel'
 import { ShowStrip } from '@/components/show-strip'
+import { RevisionBadge } from '@/components/status'
 import { Button } from '@/components/ui/button'
 import { activeRun } from '@/features/fleet/live-frame'
 import { api } from '@/lib/api'
+import { groupAudit } from '@/lib/audit-text'
 import { formatMs, timeAgo } from '@/lib/format'
 import {
   locationsQuery,
@@ -39,7 +43,10 @@ function ProjectHome() {
       <Steps project={project} stage={stage} />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Activity projectId={projectId} />
-        <TeamCard project={project} />
+        <div className="space-y-6">
+          <RevisionsCard project={project} />
+          <TeamCard project={project} />
+        </div>
       </div>
     </PageBody>
   )
@@ -54,12 +61,11 @@ function Hero({ project, stage }: { project: Project; stage: ProjectStage }) {
   const location = locations.find((l) => l.id === env?.locationId)
   return (
     <Panel className="grid overflow-hidden lg:grid-cols-[minmax(0,1fr)_minmax(0,1.3fr)]">
-      <div className="space-y-4 p-6">
-        <div className="flex items-center gap-2">
-          <span className="text-eyebrow">Project · one show</span>
+      <div className="space-y-3 p-6">
+        <div className="flex flex-wrap items-center gap-3">
+          <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
           <StageBadge stage={stage} />
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">{project.name}</h1>
         <p className="text-sm text-muted-foreground">{project.description || 'No description yet.'}</p>
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className="text-muted-foreground">Runs in</span>
@@ -87,6 +93,16 @@ function Hero({ project, stage }: { project: Project; stage: ProjectStage }) {
             >
               layout r{draft.environment.revision}
             </span>
+          )}
+          {draft && (env?.latestRevision ?? 0) > draft.environment.revision && (
+            <Link
+              to="/projects/$projectId/show"
+              params={{ projectId: project.id }}
+              className="rounded border border-motion/40 bg-motion/10 px-1.5 py-px text-[11px] text-motion hover:bg-motion/20"
+              title="The layout changed after this show was made. Open the timeline to re-pin it, then publish for review."
+            >
+              layout r{env?.latestRevision} published: update the show →
+            </Link>
           )}
         </div>
       </div>
@@ -161,54 +177,54 @@ function Steps({ project, stage }: { project: Project; stage: ProjectStage }) {
   // Each step's button says what you can do there: act if your roles allow it, otherwise look.
   const action: Record<StepKey, string> = {
     animate: can.edit ? 'Open timeline' : 'View timeline',
-    review: can.review ? 'Review revisions' : 'View revisions',
+    review: can.review ? 'Open review' : 'View review',
     deploy: can.deploy ? 'Deploy' : 'View devices',
     launch: can.launch ? 'Open control room' : 'View control room',
   }
   const current = stepIndex(stage.stage)
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-      {STEPS.map((s, i) => (
-        <Panel
-          key={s.key}
-          className={cn(
-            'relative flex flex-col gap-3 p-5',
-            i === current && 'border-primary/50 shadow-[0_0_0_1px_oklch(0.79_0.17_155/25%)]',
-          )}
-          data-testid={`home-step-${s.key}`}
-        >
-          <div className="flex items-center gap-2.5">
+    <Panel className="grid overflow-hidden md:grid-cols-2 xl:grid-cols-4">
+      {STEPS.map((s, i) => {
+        const mine = can[s.key === 'animate' ? 'edit' : s.key]
+        return (
+          <Link
+            key={s.key}
+            to={s.to}
+            params={{ projectId: project.id }}
+            className={cn(
+              'group relative flex flex-col gap-2 border-b p-4 transition hover:bg-surface-2/60 md:odd:border-r xl:border-b-0 xl:not-last:border-r',
+              i === current && 'bg-primary/[0.06] hover:bg-primary/[0.09]',
+            )}
+            data-testid={`home-step-${s.key}`}
+          >
+            {i === current && <span className="absolute inset-x-0 top-0 h-0.5 bg-primary" />}
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  'flex size-5 items-center justify-center rounded-full border text-[10px] font-semibold',
+                  i < current && 'border-primary/40 bg-primary/15 text-primary',
+                  i === current && 'border-primary text-primary',
+                )}
+              >
+                {i < current ? <Check className="size-3" /> : s.n}
+              </span>
+              <span className="text-sm font-semibold">{s.label}</span>
+              {i === current && <span className="text-eyebrow ml-auto text-primary">Now</span>}
+            </div>
+            <p className="line-clamp-2 min-h-10 text-[13px] leading-5 text-muted-foreground">{text[s.key]}</p>
             <span
               className={cn(
-                'flex size-7 items-center justify-center rounded-full border text-xs font-semibold',
-                i < current && 'border-primary/40 bg-primary/15 text-primary',
-                i === current && 'border-primary bg-primary text-primary-foreground',
+                'mt-auto inline-flex items-center gap-1 text-xs font-medium',
+                i === current && mine ? 'text-primary' : 'text-muted-foreground group-hover:text-foreground',
               )}
             >
-              {s.n}
+              {action[s.key]} <ArrowRight className="size-3.5 transition group-hover:translate-x-0.5" />
             </span>
-            <div>
-              <div className="font-semibold">{s.label}</div>
-              <div className="text-[11px] text-muted-foreground">{s.blurb}</div>
-            </div>
-            {i === current && <span className="text-eyebrow ml-auto text-primary">Next</span>}
-            {i < current && <span className="text-eyebrow ml-auto">Done</span>}
-          </div>
-          <p className="flex-1 text-sm text-muted-foreground">{text[s.key]}</p>
-          <Button
-            size="sm"
-            variant={i === current && can[s.key === 'animate' ? 'edit' : s.key] ? 'default' : 'outline'}
-            className="self-start"
-            asChild
-          >
-            <Link to={s.to} params={{ projectId: project.id }}>
-              {action[s.key]} <ArrowRight />
-            </Link>
-          </Button>
-        </Panel>
-      ))}
-    </div>
+          </Link>
+        )
+      })}
+    </Panel>
   )
 }
 
@@ -220,21 +236,90 @@ function Activity({ projectId }: { projectId: string }) {
     // Revisions, deployments and launches are logged as "<show>@<revision>".
     select: (entries) => entries.filter((e) => e.entityId === projectId || e.entityId.startsWith(`${projectId}@`)),
   })
+  const groups = groupAudit(data).slice(0, 8)
   return (
     <Panel>
-      <div className="border-b px-5 py-3 font-semibold">Activity</div>
+      <div className="flex items-center justify-between border-b px-5 py-3">
+        <span className="font-semibold">Activity</span>
+        <Link to="/audit" className="text-xs text-muted-foreground hover:text-foreground">
+          Audit log →
+        </Link>
+      </div>
       <ol className="divide-y">
-        {data.slice(0, 10).map((e) => (
-          <li key={e.seq} className="flex items-center gap-3 px-5 py-2.5 text-sm">
-            <span className="font-medium capitalize">{e.actor}</span>
-            <span className="text-muted-foreground">{e.action.replace(/[._]/g, ' ')}</span>
-            {e.entityId.includes('@') && (
-              <span className="font-mono text-xs text-muted-foreground">r{e.entityId.split('@')[1]}</span>
+        {groups.map((g) => {
+          const e = g.entries[0]
+          if (!e) return null
+          return (
+            <li
+              key={e.seq}
+              className="flex items-center gap-3 px-5 py-2.5 text-sm"
+              title={g.entries.map((x) => `#${x.seq} ${x.action}`).join('\n')}
+            >
+              <PersonAvatar name={e.actor} className="ring-0" />
+              <span className="min-w-0">
+                <span className="font-medium capitalize">{e.actor}</span>{' '}
+                <span className="text-muted-foreground">{g.sentence}</span>
+              </span>
+              <span className="ml-auto shrink-0 text-xs text-muted-foreground" title={new Date(e.at).toLocaleString()}>
+                {timeAgo(e.at)}
+              </span>
+            </li>
+          )
+        })}
+        {data.length === 0 && <li className="px-5 py-4 text-sm text-muted-foreground">Nothing yet.</li>}
+      </ol>
+    </Panel>
+  )
+}
+
+/** The latest revisions at a glance, with their downloads; the catalog has them all. */
+function RevisionsCard({ project }: { project: Project }) {
+  const user = useUser()
+  const { data: revisions = [] } = useQuery(revisionsQuery(project.id))
+  const operate = useProjectCan('operate', project)
+  const canPackage = canCall(user, 'downloadPackage') && operate
+  const download = useDownloadRevision(project.id)
+  return (
+    <Panel data-testid="home-revisions">
+      <div className="flex items-center justify-between border-b px-5 py-3">
+        <span className="font-semibold">Revisions</span>
+        <Link
+          to="/projects/$projectId/revisions"
+          params={{ projectId: project.id }}
+          className="text-xs text-muted-foreground hover:text-foreground"
+        >
+          All {revisions.length} →
+        </Link>
+      </div>
+      <ol className="divide-y">
+        {revisions.slice(0, 4).map((r) => (
+          <li key={r.revision} className="flex items-center gap-2.5 px-5 py-2">
+            <span className="font-mono text-sm">r{r.revision}</span>
+            <RevisionBadge status={r.status} />
+            <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={r.note}>
+              {r.note || `by ${r.publishedBy}`} · {timeAgo(r.publishedAt)}
+            </span>
+            <Button
+              size="icon-xs"
+              variant="ghost"
+              title="Download the definition (.json)"
+              onClick={() => download.mutate({ revision: r.revision, as: 'definition' })}
+            >
+              <FileJson />
+            </Button>
+            {r.status === 'approved' && r.signed && canPackage && (
+              <Button
+                size="icon-xs"
+                variant="ghost"
+                title="Download the offline install package (.zip)"
+                onClick={() => download.mutate({ revision: r.revision, as: 'package' })}
+              >
+                <Package />
+              </Button>
             )}
-            <span className="ml-auto shrink-0 text-xs text-muted-foreground">{timeAgo(e.at)}</span>
           </li>
         ))}
-        {data.length === 0 && <li className="px-5 py-4 text-sm text-muted-foreground">Nothing yet.</li>}
+        {revisions.length === 0 && <li className="px-5 py-4 text-sm text-muted-foreground">Not published yet.</li>}
       </ol>
     </Panel>
   )
@@ -260,9 +345,7 @@ function TeamCard({ project }: { project: Project }) {
           const person = workspace?.directory.find((p) => p.name === m.user)
           return (
             <div key={m.user} className="flex items-center gap-3 px-5 py-2.5">
-              <span className="flex size-7 items-center justify-center rounded-full bg-surface-2 text-[10px] font-semibold uppercase">
-                {m.user.slice(0, 2)}
-              </span>
+              <PersonAvatar name={m.user} className="size-7 ring-0" />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm">{person?.displayName ?? m.user}</div>
                 <div className="truncate text-[11px] text-muted-foreground">{person?.title}</div>

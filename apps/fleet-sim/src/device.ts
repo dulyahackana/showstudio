@@ -8,15 +8,18 @@ import {
   type StartedBehavior,
   sampleDollPose,
   sampleLightState,
+  standbyBundle,
   validateDollPayload,
 } from '@studio/playback'
 import {
+  type ConsoleButton,
   type DeviceState,
   type DeviceToFleet,
   type DocRef,
   type FleetToDevice,
   FleetToDevice as FleetToDeviceSchema,
   type JointLimits,
+  type PanelMsg,
   PROTOCOL_VERSION,
   type ProvisionedDevice,
   refKey,
@@ -82,8 +85,14 @@ export class SimDevice {
   private backoffMs = 500
   private offsetMs = 0
   private estopped = false
+  private estopPressed = false
+  private panel: PanelMsg | null = null
+  private selected: string | null = null
+  private notice: string | null = null
   private fault: string | null = null
   private active: Active | null = null
+  /** After a show completes: its standby responses, on a clock that starts at the show's end. */
+  private standby: Active | null = null
   private readonly staged = new Map<string, Staged>()
   private readonly seenOps: string[] = []
   private readonly publicKey: KeyObject
@@ -99,7 +108,21 @@ export class SimDevice {
     this.id = opts.device.deviceId
     this.publicKey = createPublicKey(opts.publicKeyPem)
     opts.bus.on('behaviorStart', ({ sha256: sha, id, startAt }) => {
-      if (this.active?.sha256 === sha && this.involved(id)) this.active.started.push({ id, startAt })
+      const live = this.active ?? this.standby
+      if (live?.sha256 === sha && live.bundle.behaviors.find((b) => b.id === id)?.devices.includes(this.id))
+        live.started.push({ id, startAt })
+    })
+    opts.bus.on('estop', ({ reason }) => {
+      if (this.estopped) return
+      this.estopped = true
+      this.finish(`E-STOP: ${reason}`)
+      this.sendStatus()
+    })
+    opts.bus.on('reset', ({ by }) => {
+      if (!this.estopped || by === this.id) return
+      this.estopped = false
+      this.log(`e-stop reset (relayed by ${by})`)
+      this.sendStatus()
     })
     if (opts.device.kind === 'doll' && opts.localLimits) {
       this.pose = Object.fromEntries(opts.localLimits.map((j) => [j.name, j.home]))
@@ -114,20 +137,18 @@ export class SimDevice {
     this.opts.log?.(`[${this.id}] ${msg}`)
   }
 
-  private involved(behaviorId: string) {
-    return this.active?.bundle.behaviors.find((b) => b.id === behaviorId)?.devices.includes(this.id) ?? false
-  }
-
   get state(): DeviceState {
     if (this.estopped) return 'estopped'
     if (this.fault) return 'faulted'
+    if (this.kind === 'console') return 'ready'
     if (this.active) return Date.now() < this.active.startAtLocal ? 'armed' : 'running'
+    if (this.standby) return 'standby'
     return [...this.staged.values()].some((s) => s.info.status === 'staged') ? 'ready' : 'idle'
   }
 
-  /** Sensor responses started during the current run (decided by the local show controller). */
+  /** Sensor responses started during the current run or standby (decided by the local show controller). */
   get startedBehaviors(): readonly StartedBehavior[] {
-    return this.active?.started ?? []
+    return (this.active ?? this.standby)?.started ?? []
   }
 
   get stagedShows(): StagedShow[] {
@@ -145,6 +166,53 @@ export class SimDevice {
     if (this.ticker) clearInterval(this.ticker)
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
     this.ws?.close()
+  }
+
+  /** Consoles: the panel as the operator sees it. */
+  get console() {
+    return { estopPressed: this.estopPressed, selected: this.selected, panel: this.panel, notice: this.notice }
+  }
+
+  /**
+   * Consoles: an operator presses a button. E-STOP latches every controller over the
+   * park network first, then tells the fleet manager; the mushroom stays in until
+   * released. RUN and RESET ask the fleet manager, which may refuse (shown as a notice).
+   */
+  press(button: ConsoleButton): void {
+    if (this.kind !== 'console') return
+    const report = (action: 'run' | 'estop' | 'reset', sha: string | null = null) =>
+      this.send({ type: 'console', action, sha256: sha, at: Date.now() + this.offsetMs })
+    this.notice = null
+    switch (button) {
+      case 'estop':
+        if (this.estopPressed) return
+        this.estopPressed = true
+        this.log('E-STOP pressed')
+        this.opts.bus.emit('estop', { by: this.id, reason: `E-STOP pressed on ${this.id}` })
+        report('estop')
+        this.sendStatus()
+        return
+      case 'release':
+        this.estopPressed = false
+        this.log('E-STOP released')
+        this.sendStatus()
+        return
+      case 'select': {
+        const shows = this.panel?.prepared ?? []
+        const i = shows.findIndex((p) => p.sha256 === this.selected)
+        this.selected = shows[(i + 1) % Math.max(1, shows.length)]?.sha256 ?? null
+        return
+      }
+      case 'run':
+        if (this.estopPressed) this.notice = 'Twist the E-STOP out and reset first'
+        else if (!this.selected) this.notice = 'No prepared show'
+        else report('run', this.selected)
+        return
+      case 'reset':
+        if (this.estopPressed) this.notice = 'Twist the E-STOP out first'
+        else report('reset')
+        return
+    }
   }
 
   /** Drop the connection (simulates a network cut); playback continues locally. */
@@ -211,6 +279,7 @@ export class SimDevice {
           }
         : null,
       fault: this.fault,
+      ...(this.kind === 'console' ? { estopPressed: this.estopPressed } : {}),
     })
   }
 
@@ -234,6 +303,7 @@ export class SimDevice {
       case 'deploy':
         return this.deploy(msg)
       case 'remove':
+        if (this.standby?.sha256 === msg.sha256) this.finish('removed from this controller')
         if (this.active?.sha256 !== msg.sha256) {
           this.staged.delete(msg.sha256)
           if (this.opts.dataDir) rmSync(join(this.storeDir(), `${msg.sha256}.json`), { force: true })
@@ -254,6 +324,8 @@ export class SimDevice {
       case 'reset':
         this.estopped = false
         this.log('e-stop reset')
+        // Consoles carry the reset over the park network, like the e-stop itself.
+        if (this.kind === 'console') this.opts.bus.emit('reset', { by: this.id })
         this.ack(msg.opId)
         return this.sendStatus()
       case 'simulateSensor':
@@ -262,7 +334,18 @@ export class SimDevice {
         this.opts.bus.emit('sensor', { sensorId: this.id, event: msg.event })
         this.send({ type: 'sensorEvent', sensorId: this.id, event: msg.event, at: Date.now() + this.offsetMs })
         return this.ack(msg.opId)
+      case 'panel':
+        this.panel = msg
+        // Keep the operator's choice while it is still prepared; otherwise the first good-to-go show.
+        if (!msg.prepared.some((p) => p.sha256 === this.selected))
+          this.selected = (msg.prepared.find((p) => p.goodToGo) ?? msg.prepared[0])?.sha256 ?? null
+        return
+      case 'simulateConsole':
+        if (this.kind !== 'console') return this.ack(msg.opId, 'not a console')
+        this.press(msg.button)
+        return this.ack(msg.opId)
       case 'error':
+        if (msg.code === 'console-refused') this.notice = msg.message
         this.log(`fleet manager error: ${msg.code} ${msg.message}`)
         return
     }
@@ -388,6 +471,7 @@ export class SimDevice {
       this.ack(opId, refusal ?? 'show not staged')
       return
     }
+    this.finish('a show was launched') // ends standby
     const startAtLocal = startAt - this.offsetMs
     this.active = { sha256: sha, bundle: staged.bundle, startAtLocal, started: [], lastAudioT: -1 }
     this.opts.bus.emit('run', { sha256: sha, bundle: staged.bundle, startAtLocal })
@@ -399,7 +483,10 @@ export class SimDevice {
 
   private tick(): void {
     const a = this.active
-    if (!a) return
+    if (!a) {
+      if (this.standby) this.output(this.standby, Date.now() - this.standby.startAtLocal)
+      return
+    }
     const t = Date.now() - a.startAtLocal
     if (t < 0) return
     if (t >= a.bundle.durationMs) {
@@ -407,6 +494,10 @@ export class SimDevice {
       this.sendStatus()
       return
     }
+    this.output(a, t)
+  }
+
+  private output(a: Active, t: number): void {
     const payload = a.bundle.devices[this.id]
     const behavior = activeBehaviorFor(a.bundle, this.id, t, a.started)
     if (payload?.kind === 'doll') this.pose = sampleDollPose(payload, t, behavior)
@@ -420,14 +511,31 @@ export class SimDevice {
     }
   }
 
+  /** Ends the run (a completed show may go on in standby) or, with no run, ends standby. */
   private finish(reason: string): void {
+    const a = this.active ?? this.standby
+    if (!a) return
+    const completed = this.active !== null && reason === 'completed'
+    const what = this.active ? a.bundle.show.name : `standby (${a.bundle.show.name})`
     if (this.ticker) clearInterval(this.ticker)
     this.ticker = null
-    if (!this.active) return
-    this.opts.bus.emit('runEnd', { sha256: this.active.sha256 })
-    this.log(`${this.active.bundle.show.name}: ${reason}`)
     this.active = null
+    this.standby = null
+    this.opts.bus.emit('runEnd', { sha256: a.sha256, completed })
+    this.log(`${what}: ${reason}`)
     // Real controllers home at reduced speed; the sim snaps to home.
     if (this.opts.localLimits) this.pose = Object.fromEntries(this.opts.localLimits.map((j) => [j.name, j.home]))
+    const standby = completed ? standbyBundle(a.bundle) : null
+    if (standby) {
+      this.standby = {
+        sha256: a.sha256,
+        bundle: standby,
+        startAtLocal: a.startAtLocal + a.bundle.durationMs,
+        started: [],
+        lastAudioT: -1,
+      }
+      this.ticker = setInterval(() => this.tick(), TICK_MS)
+      this.log('standby: answering guests between shows')
+    }
   }
 }

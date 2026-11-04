@@ -10,6 +10,11 @@ import { canCall, useUser } from './session'
  */
 
 export const projectsQuery = queryOptions({ queryKey: ['projects'], queryFn: () => api('listProjects') })
+/** Deleted projects you could see; under ['projects'], so project invalidations refresh it too. */
+export const deletedProjectsQuery = queryOptions({
+  queryKey: ['projects', 'deleted'],
+  queryFn: () => api('listProjects', { query: { status: 'deleted' } }),
+})
 export const projectQuery = (projectId: string) =>
   queryOptions({ queryKey: ['project', projectId], queryFn: () => api('getProject', { params: { projectId } }) })
 export const locationsQuery = queryOptions({
@@ -27,11 +32,21 @@ export function useProjects() {
   return useQuery(projectsQuery)
 }
 
-/** Project-level permission (admins always pass), mirroring PROJECT_PERMISSIONS on the server. */
+/**
+ * Project-level permission (admins always pass), mirroring PROJECT_PERMISSIONS on the
+ * server. A deleted project is read-only for everyone until it is recovered.
+ */
 export function useProjectCan(permission: ProjectPermission, project: Project | null | undefined): boolean {
   const user = useUser()
+  if (project?.deletedAt && permission !== 'read') return false
   if (user?.roles.includes('admin')) return true
   return projectAllows(project?.myRole, permission)
+}
+
+/** Owners and admins may delete a project and recover it. */
+export function useCanDeleteProject(project: Project | null | undefined): boolean {
+  const user = useUser()
+  return !!project && (!!user?.roles.includes('admin') || project.myRole === 'owner')
 }
 
 /**

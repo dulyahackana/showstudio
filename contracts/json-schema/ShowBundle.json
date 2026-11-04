@@ -433,6 +433,10 @@
             ],
             "description": "Show-time window in which the trigger is honoured; null = whole show"
           },
+          "standby": {
+            "description": "Also answer guests between shows: once this show completes the attraction stays in standby (figures at home, fixtures dark) until an operator stops it or launches a show. Absent = during the show only",
+            "type": "boolean"
+          },
           "blendMs": {
             "type": "integer",
             "minimum": 0,
@@ -515,6 +519,10 @@
                 "type": "null"
               }
             ]
+          },
+          "standby": {
+            "description": "Also live between shows; absent in bundles built before standby existed",
+            "type": "boolean"
           },
           "blendMs": {
             "type": "integer",
@@ -743,6 +751,58 @@
           "draft"
         ],
         "additionalProperties": false
+      },
+      "ConsoleAction": {
+        "type": "string",
+        "enum": [
+          "run",
+          "estop",
+          "reset"
+        ]
+      },
+      "ConsoleButton": {
+        "type": "string",
+        "enum": [
+          "run",
+          "estop",
+          "release",
+          "reset",
+          "select"
+        ]
+      },
+      "ConsoleMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "console"
+          },
+          "action": {
+            "$ref": "#/components/schemas/ConsoleAction"
+          },
+          "sha256": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Sha256"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "run: the prepared show selected on the panel"
+          },
+          "at": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "type",
+          "action",
+          "sha256",
+          "at"
+        ],
+        "additionalProperties": false,
+        "description": "An operator pressed a console button. estop has already latched the park locally; run and reset are decided by the fleet manager (refusals come back as an error message)"
       },
       "CreateDeploymentRequest": {
         "type": "object",
@@ -1066,7 +1126,8 @@
           "doll",
           "light",
           "audio",
-          "sensor"
+          "sensor",
+          "console"
         ]
       },
       "DeviceList": {
@@ -1098,10 +1159,11 @@
           "ready",
           "armed",
           "running",
+          "standby",
           "estopped",
           "faulted"
         ],
-        "description": "idle: nothing staged; ready: >=1 show staged; armed: launch scheduled; running; estopped: latched until reset; faulted"
+        "description": "idle: nothing staged; ready: >=1 show staged; armed: launch scheduled; running; standby: the last show completed and its standby responses still answer guests; estopped: latched until reset; faulted"
       },
       "DeviceToFleet": {
         "oneOf": [
@@ -1116,6 +1178,9 @@
           },
           {
             "$ref": "#/components/schemas/SensorEventMsg"
+          },
+          {
+            "$ref": "#/components/schemas/ConsoleMsg"
           }
         ]
       },
@@ -1434,6 +1499,14 @@
               "$ref": "#/components/schemas/Sensor"
             }
           },
+          "consoles": {
+            "default": [],
+            "description": "Operator control panels with RUN and E-STOP",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/OperatorConsole"
+            }
+          },
           "scenery": {
             "default": [],
             "description": "Set dressing for previews and digital twins",
@@ -1455,6 +1528,7 @@
           "lights",
           "audio",
           "sensors",
+          "consoles",
           "scenery"
         ],
         "additionalProperties": false
@@ -1755,6 +1829,12 @@
           },
           {
             "$ref": "#/components/schemas/SimulateSensorMsg"
+          },
+          {
+            "$ref": "#/components/schemas/PanelMsg"
+          },
+          {
+            "$ref": "#/components/schemas/SimulateConsoleMsg"
           },
           {
             "$ref": "#/components/schemas/ErrorMsg"
@@ -2272,6 +2352,204 @@
         },
         "description": "joint name -> keys (sorted by t)"
       },
+      "OperatorConsole": {
+        "type": "object",
+        "properties": {
+          "deviceId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "position": {
+            "description": "Floor point under the pedestal",
+            "$ref": "#/components/schemas/Vec3"
+          },
+          "rotationY": {
+            "type": "number",
+            "description": "Yaw in degrees; at 0 the operator stands on +Z, facing the stage (-Z)"
+          }
+        },
+        "required": [
+          "deviceId",
+          "name",
+          "position",
+          "rotationY"
+        ],
+        "additionalProperties": false,
+        "description": "On-site control panel. Its E-STOP latches every controller over the park network without the cloud; RUN, select and RESET go through the fleet manager"
+      },
+      "PackageManifest": {
+        "type": "object",
+        "properties": {
+          "format": {
+            "type": "string",
+            "const": "show-studio-package"
+          },
+          "formatVersion": {
+            "type": "number",
+            "const": 1
+          },
+          "show": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "#/components/schemas/Id"
+              },
+              "revision": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "revision",
+              "name"
+            ],
+            "additionalProperties": false
+          },
+          "environment": {
+            "$ref": "#/components/schemas/DocRef"
+          },
+          "bundle": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "const": "bundle.json"
+              },
+              "sha256": {
+                "$ref": "#/components/schemas/Sha256"
+              },
+              "signaturePath": {
+                "type": "string",
+                "const": "bundle.sig"
+              },
+              "signature": {
+                "type": "string",
+                "description": "Base64 RSA-SHA256 signature of bundle.json, made at safety approval"
+              },
+              "signingKeySha256": {
+                "description": "SHA-256 of the studio public key (SPKI DER). Controllers verify against the key they pinned, never one shipped in a package",
+                "$ref": "#/components/schemas/Sha256"
+              }
+            },
+            "required": [
+              "path",
+              "sha256",
+              "signaturePath",
+              "signature",
+              "signingKeySha256"
+            ],
+            "additionalProperties": false
+          },
+          "published": {
+            "type": "object",
+            "properties": {
+              "by": {
+                "type": "string"
+              },
+              "at": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "by",
+              "at",
+              "note"
+            ],
+            "additionalProperties": false
+          },
+          "approved": {
+            "type": "object",
+            "properties": {
+              "by": {
+                "type": "string"
+              },
+              "at": {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              "note": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "by",
+              "at",
+              "note"
+            ],
+            "additionalProperties": false
+          },
+          "devices": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "deviceId": {
+                  "$ref": "#/components/schemas/Id"
+                },
+                "kind": {
+                  "$ref": "#/components/schemas/DeviceKind"
+                }
+              },
+              "required": [
+                "deviceId",
+                "kind"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "assets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "$ref": "#/components/schemas/Sha256"
+                },
+                "path": {
+                  "type": "string"
+                },
+                "mime": {
+                  "type": "string"
+                },
+                "size": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "id",
+                "path",
+                "mime",
+                "size"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "format",
+          "formatVersion",
+          "show",
+          "environment",
+          "bundle",
+          "published",
+          "approved",
+          "devices",
+          "assets"
+        ],
+        "additionalProperties": false
+      },
       "PaletteColor": {
         "type": "object",
         "properties": {
@@ -2288,6 +2566,119 @@
           "color"
         ],
         "additionalProperties": false
+      },
+      "PanelMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "panel"
+          },
+          "prepared": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "sha256": {
+                  "$ref": "#/components/schemas/Sha256"
+                },
+                "showId": {
+                  "$ref": "#/components/schemas/Id"
+                },
+                "revision": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "name": {
+                  "type": "string"
+                },
+                "goodToGo": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "sha256",
+                "showId",
+                "revision",
+                "name",
+                "goodToGo"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "run": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "sha256": {
+                    "$ref": "#/components/schemas/Sha256"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "revision": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "startAt": {
+                    "type": "number"
+                  },
+                  "durationMs": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "sha256",
+                  "name",
+                  "revision",
+                  "startAt",
+                  "durationMs"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "estop": {
+            "type": "object",
+            "properties": {
+              "active": {
+                "type": "boolean"
+              },
+              "by": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "reason": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "active",
+              "by",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "type",
+          "prepared",
+          "run",
+          "estop"
+        ],
+        "additionalProperties": false,
+        "description": "What a console's display shows; resent whenever it changes"
       },
       "Person": {
         "type": "object",
@@ -2478,6 +2869,23 @@
             "items": {
               "$ref": "#/components/schemas/ProjectMember"
             }
+          },
+          "deletedAt": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Timestamp"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set while the project is deleted: hidden from lists, read-only, taken off the controllers; owners and admins can recover it"
+          },
+          "deletedBy": {
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "required": [
@@ -2489,7 +2897,9 @@
           "createdAt",
           "createdBy",
           "myRole",
-          "members"
+          "members",
+          "deletedAt",
+          "deletedBy"
         ],
         "additionalProperties": false,
         "description": "One show, from first keyframe to launch, and the team allowed to work on it"
@@ -2671,6 +3081,21 @@
         "required": [
           "type",
           "opId"
+        ],
+        "additionalProperties": false
+      },
+      "RestoreRequest": {
+        "type": "object",
+        "properties": {
+          "draftVersion": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "The draft being replaced (optimistic concurrency)"
+          }
+        },
+        "required": [
+          "draftVersion"
         ],
         "additionalProperties": false
       },
@@ -3626,6 +4051,44 @@
         ],
         "additionalProperties": false
       },
+      "SimulateConsoleMsg": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "simulateConsole"
+          },
+          "opId": {
+            "type": "string"
+          },
+          "button": {
+            "$ref": "#/components/schemas/ConsoleButton"
+          }
+        },
+        "required": [
+          "type",
+          "opId",
+          "button"
+        ],
+        "additionalProperties": false,
+        "description": "Development only: stands in for an operator at the panel"
+      },
+      "SimulateConsoleRequest": {
+        "type": "object",
+        "properties": {
+          "environmentId": {
+            "$ref": "#/components/schemas/Id"
+          },
+          "button": {
+            "$ref": "#/components/schemas/ConsoleButton"
+          }
+        },
+        "required": [
+          "environmentId",
+          "button"
+        ],
+        "additionalProperties": false
+      },
       "SimulateSensorMsg": {
         "type": "object",
         "properties": {
@@ -3741,6 +4204,10 @@
               "string",
               "null"
             ]
+          },
+          "estopPressed": {
+            "description": "Consoles only: the E-STOP mushroom is pushed in (it stays in until twisted out)",
+            "type": "boolean"
           }
         },
         "required": [

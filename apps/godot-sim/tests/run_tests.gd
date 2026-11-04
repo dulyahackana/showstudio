@@ -11,6 +11,8 @@ const Playback := preload("res://scripts/playback.gd")
 const Scheduler := preload("res://scripts/scheduler.gd")
 const Validator := preload("res://scripts/validator.gd")
 const Figure := preload("res://scripts/figure.gd")
+const ShowBus := preload("res://scripts/show_bus.gd")
+const SimDevice := preload("res://scripts/sim_device.gd")
 
 var _failures := 0
 var _passes := 0
@@ -59,6 +61,29 @@ func _initialize() -> void:
 			_close(got, c["errors"], tol, "error codes")
 		)
 
+	for c in vectors["standby"]:
+		_case("standby: " + c["name"], func():
+			_close(Playback.standby_bundle(c["bundle"]), c["standby"] if c["standby"] != null else {}, tol, "standby")
+		)
+	_case("show controller: answers guests in standby after a completed show, until stopped", func():
+		var bus: Node = ShowBus.new()
+		var fired := []
+		bus.behavior_started.connect(func(_sha, id, _at): fired.append(id))
+		var b: Dictionary = vectors["standby"][1]["bundle"]
+		bus.sensor_fired.emit("door", "enter")
+		_check(fired.is_empty(), "ignored with no show and no standby")
+		bus.run_started.emit("sha", b, Net.now_ms() - float(b["durationMs"]) - 1000.0)
+		bus.run_ended.emit("sha", true)
+		_check(bus.in_standby(), "standby once the show completes")
+		bus.sensor_fired.emit("door", "enter")
+		_check(fired == ["wave"], "a guest still gets the response, outside its show window: %s" % [fired])
+		bus.run_ended.emit("sha", false)
+		_check(not bus.in_standby(), "stop ends standby")
+		bus.sensor_fired.emit("door", "enter")
+		_check(fired.size() == 1, "nothing after standby ended")
+		bus.free()
+	)
+
 	var sig: Dictionary = _json(_repo.path_join("test-vectors/signature.json"))
 	_case("signature: accepts the studio signature, rejects one changed byte", func():
 		var key := Net.load_public_key(sig["publicKeyPem"])
@@ -88,6 +113,51 @@ func _initialize() -> void:
 		_check(contract.validate({"type": "selfDestruct"}, "FleetToDevice") != "", "unknown command is rejected")
 		var status := {"type": "status", "state": "ready", "staged": [], "active": null, "fault": null}
 		_check(contract.validate(status, "DeviceToFleet") == "", "status message is valid")
+	)
+
+	_case("console: its E-STOP latches every controller over the park network; RUN and RESET ask the studio", func():
+		var bus: Node = ShowBus.new()
+		var make := func(id: String, kind: String):
+			var d = SimDevice.new()
+			d.setup({
+				"device": {"deviceId": id, "kind": kind, "name": id, "token": "t", "characterRef": null},
+				"api_url": "http://127.0.0.1:9",
+				"environment_id": "lab",
+				"public_key": null,
+				"contract": contract,
+				"bus": bus,
+				"data_dir": OS.get_user_data_dir(),
+			})
+			return d
+		var console = make.call("console-01", "console")
+		var light = make.call("light-01", "light")
+		_check(console.state() == "ready", "a console is ready for its operator")
+		var demo := {"sha256": "a".repeat(64), "showId": "demo", "revision": 1, "name": "Demo", "goodToGo": false}
+		var finale := {"sha256": "b".repeat(64), "showId": "finale", "revision": 2, "name": "Finale", "goodToGo": true}
+		var panel := {"type": "panel", "prepared": [demo, finale], "run": null, "estop": {"active": false, "by": null, "reason": null}}
+		_check(contract.validate(panel, "FleetToDevice") == "", "panel message is valid: " + contract.validate(panel, "FleetToDevice"))
+		console._on_message(JSON.stringify(panel))
+		_check(console.selected == finale["sha256"], "the display selects the first good-to-go show")
+		_check(console.display_lines()[1].contains("Finale r2"), "and shows it: %s" % console.display_lines()[1])
+		console.press("select")
+		_check(console.selected == demo["sha256"], "NEXT cycles through the prepared shows")
+		console.press("run")
+		_check(console.notice.containsn("unreachable"), "RUN needs the studio: %s" % console.notice)
+
+		console.press("estop")
+		_check(console.estop_pressed and light.estopped, "E-STOP latches the light locally, no cloud involved")
+		_check(console.display_lines()[0].begins_with("E-STOP PRESSED"), "display: %s" % console.display_lines()[0])
+		console.press("reset")
+		_check(console.notice.containsn("twist"), "no reset while the mushroom is pushed in")
+		console.press("release")
+		_check(not console.estop_pressed and light.estopped, "twisting it out does not clear the latch")
+		console._on_message(JSON.stringify({"type": "reset", "opId": "op-reset"}))
+		_check(not light.estopped and not console.estopped, "an accepted reset is relayed to every controller")
+		var report := {"type": "console", "action": "run", "sha256": finale["sha256"], "at": 1.7e12}
+		_check(contract.validate(report, "DeviceToFleet") == "", "console message is valid")
+		console.free()
+		light.free()
+		bus.free()
 	)
 
 	_case("figure: joints drive skeleton bones, not same-named attachment nodes", func():

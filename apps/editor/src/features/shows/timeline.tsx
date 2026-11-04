@@ -12,7 +12,7 @@ import {
 } from '@studio/schema'
 import { useSelector } from '@tanstack/react-store'
 import type { Draft } from 'immer'
-import { Bot, ChevronDown, ChevronRight, Lightbulb, Radar, Volume2 } from 'lucide-react'
+import { Bot, ChevronDown, ChevronRight, Diamond as DiamondIcon, Lightbulb, Radar, Volume2 } from 'lucide-react'
 import { memo, type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react'
 import { useEditable } from '@/components/editable'
 import { formatMs } from '@/lib/format'
@@ -35,6 +35,7 @@ import {
 } from './timeline-math'
 
 const HEADER_W = 220
+export const TIMELINE_HEADER_W = HEADER_W
 const RULER_H = 26
 const PAD = 6
 const RESPONSE_H = 18
@@ -86,7 +87,7 @@ function buildRows(
       type: 'group',
       id: p.deviceId,
       label: p.name,
-      sub: `${p.deviceId} · ${c?.joints.length ?? 0} joints`,
+      sub: `${p.deviceId} · ${c?.joints.length ?? 0} ${c?.joints.length === 1 ? 'joint' : 'joints'}`,
       kind: 'doll',
     })
     if (!c || collapsed.has(p.deviceId)) continue
@@ -541,7 +542,6 @@ export function Timeline(props: TimelineProps) {
             style={{ width: HEADER_W }}
           >
             <span className="text-eyebrow">Tracks</span>
-            <span className="font-mono">{formatMs(durationMs, false)}</span>
           </div>
           <div className="relative cursor-ew-resize" style={{ width: laneW }} onPointerDown={scrub} data-testid="ruler">
             {ticks.map((tk) => (
@@ -622,19 +622,35 @@ export function Timeline(props: TimelineProps) {
               className={cn('flex border-b', selectedRow && 'bg-primary/5')}
               style={{ height: row.height }}
             >
-              <button
-                type="button"
+              <div
                 className={cn(
-                  'sticky left-0 z-10 flex items-center gap-2 border-r bg-background px-2 pl-6 text-left transition hover:bg-surface-2',
+                  'group/row sticky left-0 z-10 flex items-center border-r bg-background transition hover:bg-surface-2',
                   selectedRow && 'bg-primary/10 shadow-[inset_2px_0_0_0_var(--primary)]',
                 )}
                 style={{ width: HEADER_W }}
-                onClick={() => onSelect({ row: row.ref, index: null })}
-                data-testid={`row-${rowKey(row.ref)}`}
               >
-                <span className="truncate font-mono">{label}</span>
-                <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{meta}</span>
-              </button>
+                <button
+                  type="button"
+                  className="flex h-full min-w-0 flex-1 items-center gap-2 px-2 pl-6 text-left"
+                  onClick={() => onSelect({ row: row.ref, index: null })}
+                  data-testid={`row-${rowKey(row.ref)}`}
+                >
+                  <span className="truncate font-mono">{label}</span>
+                  <span className="ml-auto shrink-0 text-[10px] text-muted-foreground">{meta}</span>
+                </button>
+                {editable && (
+                  <button
+                    type="button"
+                    title={row.type === 'audio' ? 'Add a cue at the playhead' : 'Add a key at the playhead'}
+                    aria-label={`Add a key to ${label} at the playhead`}
+                    className="mr-1.5 flex size-6 shrink-0 items-center justify-center rounded text-muted-foreground opacity-0 transition group-hover/row:opacity-100 hover:bg-primary/15 hover:text-primary focus-visible:opacity-100"
+                    onClick={() => addKey(row, playback.t)}
+                    data-testid={`key-${rowKey(row.ref)}`}
+                  >
+                    <DiamondIcon className="size-3.5" />
+                  </button>
+                )}
+              </div>
               <svg
                 width={laneW}
                 height={row.height}

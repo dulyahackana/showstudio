@@ -131,7 +131,7 @@ try {
     () => call('listDevices', { query: { environmentId } }),
     (ds) => ds.length === expected && ds.every((d) => d.online && d.firmware.startsWith('godot-sim')),
   )
-  step(`Godot provisioned and connected ${expected} controllers (figures, lights, audio, sensors)`)
+  step(`Godot provisioned and connected ${expected} controllers (figures, lights, audio, sensors, console)`)
 
   await call('createDeployment', { body: show })
   const ready = await waitFor('good to go', status, (s: EnvironmentStatus) =>
@@ -146,7 +146,7 @@ try {
   await waitFor(
     'all controllers running',
     status,
-    (s) => s.run?.status === 'running' && s.devices.every((d) => d.state === 'running'),
+    (s) => s.run?.status === 'running' && s.devices.every((d) => d.kind === 'console' || d.state === 'running'),
   )
   step('launched: all controllers running from their local copies')
 
@@ -171,6 +171,32 @@ try {
   await call('resetEstop', { body: { environmentId } })
   await waitFor('reset', status, (s) => s.devices.every((d) => d.state === 'ready'), 10_000)
   step('reset by the operator: controllers ready, shows still staged')
+
+  // The on-site console, pressed like an operator would (the studio's simulateConsole).
+  const press = (button: 'run' | 'estop' | 'release' | 'reset') =>
+    call('simulateConsole', { params: { deviceId: 'console-01' }, body: { environmentId, button } })
+  await press('run')
+  const consoleRun = await waitFor('launched from the console', status, (s) => s.run?.status === 'running', 10_000)
+  if (consoleRun.run?.launchedBy !== 'console-01') throw new Error(`launched by ${consoleRun.run?.launchedBy}`)
+  step('RUN on the console: the fleet manager checked every controller and launched')
+  await press('estop')
+  const latched = await waitFor(
+    'console e-stop latched everywhere',
+    status,
+    (s) => s.estop.active && s.devices.every((d) => d.state === 'estopped'),
+    10_000,
+  )
+  step(`E-STOP on the console: every controller latched over the park network (${latched.estop.reason})`)
+  const refused = await call('resetEstop', { body: { environmentId } }).then(
+    () => false,
+    () => true,
+  )
+  if (!refused) throw new Error('reset was accepted while the console E-STOP was still pushed in')
+  await press('release')
+  await new Promise((r) => setTimeout(r, 500))
+  await press('reset')
+  await waitFor('reset from the console', status, (s) => s.devices.every((d) => d.state === 'ready'), 10_000)
+  step('no reset while the mushroom was in; twisted out, RESET on the console: ready again')
 
   console.log('\nGodot end-to-end passed')
   cleanup()

@@ -45,7 +45,8 @@ export type Tracks = z.infer<typeof Tracks>
 /**
  * A bounded sensor response: when `trigger` fires inside `window`, blend into a
  * short clip, play it, blend back to the main timeline. Bounded clips (not
- * scripts) keep every possible show path statically verifiable.
+ * scripts) keep every possible show path statically verifiable. With `standby`
+ * it also answers guests between shows, blending from and back to the rest pose.
  */
 export const Behavior = z
   .object({
@@ -57,6 +58,12 @@ export const Behavior = z
       .object({ fromMs: TimeMs, toMs: TimeMs })
       .nullable()
       .describe('Show-time window in which the trigger is honoured; null = whole show'),
+    standby: z
+      .boolean()
+      .optional()
+      .describe(
+        'Also answer guests between shows: once this show completes the attraction stays in standby (figures at home, fixtures dark) until an operator stops it or launches a show. Absent = during the show only',
+      ),
     blendMs: z.number().int().min(0).max(10_000).describe('Blend in/out duration'),
     cooldownMs: z.number().int().min(0).max(3_600_000),
     durationMs: z.number().int().positive().max(600_000).describe('Clip length'),

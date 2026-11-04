@@ -29,7 +29,7 @@ function PeoplePage() {
       <PageHeader
         eyebrow={`Admin · ${workspace?.name ?? ''}`}
         title="People & access"
-        description="Two layers: a workspace role from single sign-on says what kind of work someone does; project membership says which shows they may do it on. The server enforces both."
+        description="Workspace roles say what someone does; project teams say where."
       />
       <PageBody>
         <div className="grid gap-4 lg:grid-cols-3">

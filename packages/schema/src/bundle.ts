@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { Joint } from './character.ts'
-import { DocRef, Id, Revision, Sha256 } from './common.ts'
+import { DocRef, Id, Revision, Sha256, Timestamp } from './common.ts'
 import { SensorEvent, SensorType } from './environment.ts'
+import { DeviceKind } from './protocol.ts'
 import { AudioCue, LightKey, MotionTracks } from './show.ts'
 
 export const JointLimits = Joint.pick({
@@ -24,6 +25,7 @@ export const BehaviorSchedule = z
     id: Id,
     trigger: z.object({ sensorId: Id, event: SensorEvent }),
     window: z.object({ fromMs: z.number().int(), toMs: z.number().int() }).nullable(),
+    standby: z.boolean().optional().describe('Also live between shows; absent in bundles built before standby existed'),
     blendMs: z.number().int().min(0),
     cooldownMs: z.number().int().min(0),
     durationMs: z.number().int().positive(),
@@ -91,3 +93,32 @@ export const ShowBundle = z
   })
   .meta({ id: 'ShowBundle' })
 export type ShowBundle = z.infer<typeof ShowBundle>
+
+/**
+ * manifest.json of an offline install package (a zip with the signed bundle, its
+ * signature, the audio files and a README). An index for people and installers: a
+ * controller still verifies the bundle hash, the signature against its own pinned key,
+ * the schema, its limits and every audio hash, exactly as for a network deploy.
+ */
+export const PackageManifest = z
+  .object({
+    format: z.literal('show-studio-package'),
+    formatVersion: z.literal(1),
+    show: z.object({ id: Id, revision: Revision, name: z.string() }),
+    environment: DocRef,
+    bundle: z.object({
+      path: z.literal('bundle.json'),
+      sha256: Sha256,
+      signaturePath: z.literal('bundle.sig'),
+      signature: z.string().describe('Base64 RSA-SHA256 signature of bundle.json, made at safety approval'),
+      signingKeySha256: Sha256.describe(
+        'SHA-256 of the studio public key (SPKI DER). Controllers verify against the key they pinned, never one shipped in a package',
+      ),
+    }),
+    published: z.object({ by: z.string(), at: Timestamp, note: z.string() }),
+    approved: z.object({ by: z.string(), at: Timestamp, note: z.string() }),
+    devices: z.array(z.object({ deviceId: Id, kind: DeviceKind })),
+    assets: z.array(z.object({ id: Sha256, path: z.string(), mime: z.string(), size: z.number().int() })),
+  })
+  .meta({ id: 'PackageManifest' })
+export type PackageManifest = z.infer<typeof PackageManifest>

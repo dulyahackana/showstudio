@@ -10,7 +10,7 @@ import { assetUrl } from '@/lib/api'
 import { BoxEdges, CharacterModel } from './character-model'
 
 export type StageSelection = {
-  kind: 'placement' | 'light' | 'audio' | 'sensor' | 'keepOut' | 'scenery'
+  kind: 'placement' | 'light' | 'audio' | 'sensor' | 'console' | 'keepOut' | 'scenery'
   id: string
 } | null
 
@@ -20,6 +20,7 @@ export type StageChange =
   | { kind: 'light'; id: string; position?: Vec3; target?: Vec3 }
   | { kind: 'audio'; id: string; position: Vec3 }
   | { kind: 'sensor'; id: string; position?: Vec3; range?: number }
+  | { kind: 'console'; id: string; position?: Vec3; rotationY?: number }
   | { kind: 'keepOut'; id: string; box: { min: Vec3; max: Vec3 } }
   | { kind: 'scenery'; id: string; position?: Vec3; rotationY?: number; scale?: number }
 
@@ -566,6 +567,21 @@ export function StageScene({
         </group>
       ))}
 
+      {(env.consoles ?? []).map((c) => (
+        <group
+          key={c.deviceId}
+          ref={register(`console:${c.deviceId}`)}
+          position={c.position}
+          rotation={[0, THREE.MathUtils.degToRad(c.rotationY), 0]}
+          onClick={pick({ kind: 'console', id: c.deviceId })}
+        >
+          <ConsoleModel selected={is('console', c.deviceId)} />
+          <group position={[0, 1.35, 0]}>
+            <Label highlight={is('console', c.deviceId)}>{c.name}</Label>
+          </group>
+        </group>
+      ))}
+
       {editing && selected && (
         <Gizmo env={env} selected={selected} editing={editing} objects={objects.current} register={register} />
       )}
@@ -594,7 +610,7 @@ function Gizmo({
   // What each kind may do: figures turn about Y, zones and sensors resize, lights aim.
   const mode: GizmoMode | null =
     editing.mode === 'rotate'
-      ? kind === 'placement' || kind === 'scenery'
+      ? kind === 'placement' || kind === 'scenery' || kind === 'console'
         ? 'rotate'
         : null
       : editing.mode === 'scale'
@@ -630,6 +646,19 @@ function Gizmo({
           },
           final,
         )
+      case 'console': {
+        const c = (env.consoles ?? []).find((x) => x.deviceId === selected.id)
+        if (!c) return
+        return editing.onChange(
+          {
+            kind,
+            id: selected.id,
+            position: [p[0], c.position[1], p[2]],
+            rotationY: Math.round(THREE.MathUtils.radToDeg(object.rotation.y) * 10) / 10,
+          },
+          final,
+        )
+      }
       case 'light':
         return editing.onChange({ kind, id: selected.id, position: p }, final)
       case 'audio':
@@ -726,5 +755,42 @@ function Gizmo({
         />
       )}
     </>
+  )
+}
+
+/**
+ * The operator's control panel: a pedestal with a sloped desk facing the operator (+Z),
+ * a red mushroom E-STOP on a yellow collar, a green RUN button and a small display.
+ */
+function ConsoleModel({ selected }: { selected: boolean }) {
+  return (
+    <group>
+      <mesh position={[0, 0.45, 0]} castShadow receiveShadow>
+        <boxGeometry args={[0.62, 0.9, 0.42]} />
+        <meshStandardMaterial color={selected ? '#1f3d33' : '#2a2f3a'} roughness={0.55} metalness={0.4} />
+      </mesh>
+      <group position={[0, 0.98, 0.02]} rotation={[0.45, 0, 0]}>
+        <mesh castShadow>
+          <boxGeometry args={[0.7, 0.06, 0.5]} />
+          <meshStandardMaterial color={selected ? '#34d399' : '#3b4252'} roughness={0.5} metalness={0.5} />
+        </mesh>
+        <mesh position={[-0.12, 0.035, -0.12]}>
+          <boxGeometry args={[0.34, 0.01, 0.14]} />
+          <meshStandardMaterial color="#0b1a14" emissive="#34d399" emissiveIntensity={0.25} />
+        </mesh>
+        <mesh position={[0.2, 0.04, 0.06]}>
+          <cylinderGeometry args={[0.1, 0.1, 0.02, 24]} />
+          <meshStandardMaterial color="#facc15" roughness={0.6} />
+        </mesh>
+        <mesh position={[0.2, 0.08, 0.06]} castShadow>
+          <cylinderGeometry args={[0.075, 0.06, 0.07, 24]} />
+          <meshStandardMaterial color="#dc2626" emissive="#7f1d1d" emissiveIntensity={0.4} roughness={0.35} />
+        </mesh>
+        <mesh position={[-0.12, 0.045, 0.1]}>
+          <cylinderGeometry args={[0.045, 0.045, 0.04, 20]} />
+          <meshStandardMaterial color="#22c55e" emissive="#22c55e" emissiveIntensity={0.6} />
+        </mesh>
+      </group>
+    </group>
   )
 }

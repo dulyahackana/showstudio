@@ -199,4 +199,12 @@ export const migrations: { version: number; name: string; sql: string }[] = [
       );
     `,
   },
+  {
+    version: 4,
+    name: 'projects can be deleted and recovered',
+    sql: `
+      -- Soft delete: hidden everywhere and read-only until an owner or admin recovers it.
+      alter table projects add column deleted_at timestamptz, add column deleted_by text;
+    `,
+  },
 ]

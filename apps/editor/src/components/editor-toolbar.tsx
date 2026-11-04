@@ -19,6 +19,7 @@ export function EditorToolbar({
   subtitle,
   requiresReview = false,
   embedded = false,
+  end,
   children,
 }: {
   // biome-ignore lint/suspicious/noExplicitAny: shared across document kinds
@@ -29,6 +30,8 @@ export function EditorToolbar({
   requiresReview?: boolean
   /** Inside a project or environment page, whose header already names the document. */
   embedded?: boolean
+  /** Far right, above the editor's side panel (its collapse toggle). */
+  end?: ReactNode
   children?: ReactNode
 }) {
   const list = LIST[editor.doc.kind as keyof typeof LIST]
@@ -114,6 +117,7 @@ export function EditorToolbar({
             requiresReview={requiresReview}
           />
         )}
+        {end}
       </div>
     </div>
   )

@@ -243,6 +243,7 @@ const lair: EnvironmentDefinition = {
     { deviceId: 'door', name: 'Entry door', type: 'presence', position: [-3.5, 0.6, 5.4], range: 1.3 },
     { deviceId: 'button', name: 'Guest bell', type: 'button', position: [3.8, 1, 4.6], range: 0.3 },
   ],
+  consoles: [{ deviceId: 'console-01', name: 'Operator console', position: [5.7, 0, 5.3], rotationY: -25 }],
   scenery: [
     // cavern walls
     prop('cliff', [-4.9, 0, -4.7]),
@@ -386,6 +387,7 @@ const awakens: ShowDefinition = {
       enabled: true,
       trigger: { sensorId: 'door', event: 'enter' },
       window: null,
+      standby: true,
       blendMs: 2500,
       cooldownMs: 8000,
       durationMs: 2500,
@@ -406,6 +408,7 @@ const awakens: ShowDefinition = {
       enabled: true,
       trigger: { sensorId: 'button', event: 'press' },
       window: null,
+      standby: true,
       blendMs: 2400,
       cooldownMs: 4000,
       durationMs: 2400,
@@ -510,6 +513,7 @@ const burrow: EnvironmentDefinition = {
   ],
   audio: [{ deviceId: 'audio-01', name: 'Burrow speakers', position: [0, 3, 2.8], maxVolumeDb: -6 }],
   sensors: [{ deviceId: 'doorbell', name: 'Doorbell', type: 'button', position: [2.6, 1, 3.6], range: 0.3 }],
+  consoles: [{ deviceId: 'console-01', name: 'Operator console', position: [4.3, 0, 4.4], rotationY: -25 }],
   scenery: [
     prop('round-door', [0, 0, -3.1], 0, 1.2),
     prop('cliff', [-3.4, 0, -3.5], 0, 0.9),
@@ -594,6 +598,7 @@ const guest: ShowDefinition = {
       enabled: true,
       trigger: { sensorId: 'doorbell', event: 'press' },
       window: null,
+      standby: true,
       blendMs: 2400,
       cooldownMs: 4000,
       durationMs: 2400,

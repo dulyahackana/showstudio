@@ -180,6 +180,14 @@ export class StudioService {
     return toSummary(row as DocRow)
   }
 
+  /** Revert: an earlier revision becomes the draft again (published revisions never change). */
+  async restoreRevision(id: string, revision: number, draftVersion: number, user: User): Promise<DocumentSummary> {
+    const row = await this.revisionRow(id, revision, this.db)
+    const doc = await this.saveDraft(id, row.kind, draftVersion, row.content, user)
+    await this.audit.append(user.name, 'draft.restore', row.kind, id, { revision })
+    return doc
+  }
+
   // ---- reference resolution --------------------------------------------------------------
 
   async revisionContent<T extends Draft>(ref: DocRef, db: Db = this.db): Promise<T | null> {

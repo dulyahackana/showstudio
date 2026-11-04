@@ -1,8 +1,8 @@
 extends Node3D
 ## Builds the attraction from the provisioned layout (the same EnvironmentDefinition the
-## editor draws): stage boundary, keep-out zones, figures, light fixtures, speakers and
-## sensors, plus a guest you can walk through the sensor zones. It only renders and
-## senses; what plays is decided by the simulated controllers.
+## editor draws): stage boundary, keep-out zones, figures, light fixtures, speakers,
+## sensors and operator consoles, plus a guest you can walk through the sensor zones. It
+## only renders and senses; what plays is decided by the simulated controllers.
 
 signal log_line(text: String)
 
@@ -13,6 +13,10 @@ const OrbitCamera := preload("res://scripts/orbit_camera.gd")
 const STAGE_COLOR := Color("#38bdf8")
 const KEEP_OUT_COLOR := Color("#cbd5e1")
 const SENSOR_COLOR := Color("#f472b6")
+const CONSOLE_COLOR := Color("#7dd3fc")
+const LAMP_GREEN := Color("#22c55e")
+const LAMP_BLUE := Color("#38bdf8")
+const LAMP_RED := Color("#ef4444")
 const GUEST_SPEED := 2.5
 const GUEST_MODEL := "res://models/guest.glb"
 
@@ -28,6 +32,7 @@ var _fixtures := {}
 var _speakers := {}
 var _players := {}
 var _sensors := {}
+var _consoles := {}
 var _devices := {}
 
 
@@ -50,6 +55,8 @@ func build(layout: Dictionary, characters: Dictionary) -> void:
 		_speaker(a)
 	for s in layout["sensors"]:
 		_sensor(s)
+	for c in layout.get("consoles", []):
+		_console(c)
 	var scenery: Array = layout.get("scenery", [])
 	for item in scenery:
 		_scenery_item(item)
@@ -120,6 +127,16 @@ func render() -> void:
 			figures[device_id].apply_pose(d.pose)
 		elif d.kind == "light" and _fixtures.has(device_id):
 			_apply_light(_fixtures[device_id], d.light)
+		elif d.kind == "console" and _consoles.has(device_id):
+			_render_console(_consoles[device_id], d)
+
+
+## Point the camera at a console from where its operator stands (C; F returns to the stage).
+func focus_console(device_id: String) -> void:
+	if not _consoles.has(device_id) or camera == null:
+		return
+	var root: Node3D = _consoles[device_id]["root"]
+	camera.look_from(root.position + Vector3(0.0, 1.0, 0.0), 2.4, root.rotation.y, -0.55)
 
 
 func click_sensor(sensor_id: String) -> void:
@@ -663,6 +680,134 @@ func _sensor(s: Dictionary) -> void:
 	root.add_child(_label("%s (%s)" % [sensor_id, s["type"]], Vector3(0.0, 0.35, 0.0), SENSOR_COLOR))
 
 
+## The operator's control panel: a pedestal with a stack light, a desk sloped towards the
+## operator (+Z) with a display, NEXT / RUN / RESET buttons and a red mushroom E-STOP on a
+## yellow collar. Clicking a button presses it on the console's simulated controller.
+func _console(c: Dictionary) -> void:
+	var device_id: String = c["deviceId"]
+	var root := Node3D.new()
+	root.name = device_id
+	root.position = _vec(c["position"])
+	root.rotation.y = deg_to_rad(float(c["rotationY"]))
+	add_child(root)
+	root.add_child(_box(Vector3(0.62, 0.9, 0.42), Vector3(0.0, 0.45, 0.0), _metal(Color("#2a2f3a"), 0.5, 0.5)))
+	root.add_child(_cylinder(0.012, 0.012, 0.42, Vector3(-0.27, 1.12, -0.17), _metal(Color("#9aa4b2"), 0.8, 0.3)))
+	var tower := _lamp_material(LAMP_GREEN)
+	root.add_child(_cylinder(0.045, 0.045, 0.1, Vector3(-0.27, 1.38, -0.17), tower))
+	var glow := OmniLight3D.new()
+	glow.position = Vector3(-0.27, 1.38, -0.05)
+	glow.omni_range = 1.4
+	glow.light_energy = 0.6
+	root.add_child(glow)
+
+	var desk := Node3D.new()
+	desk.position = Vector3(0.0, 0.98, 0.02)
+	desk.rotation.x = 0.45
+	root.add_child(desk)
+	desk.add_child(_box(Vector3(0.7, 0.06, 0.5), Vector3.ZERO, _metal(Color("#3b4252"), 0.5, 0.45)))
+	var lcd := StandardMaterial3D.new()
+	lcd.albedo_color = Color("#06110c")
+	lcd.roughness = 0.2
+	desk.add_child(_box(Vector3(0.6, 0.012, 0.15), Vector3(0.0, 0.034, -0.15), lcd))
+	var display := Label3D.new()
+	var mono := SystemFont.new()
+	mono.font_names = PackedStringArray(["SF Mono", "Menlo", "JetBrains Mono", "Consolas", "DejaVu Sans Mono", "monospace"])
+	display.font = mono
+	display.font_size = 22
+	display.pixel_size = 0.001
+	display.width = 560.0
+	display.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	display.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	display.modulate = Color("#4ade80")
+	display.outline_size = 0
+	display.position = Vector3(0.0, 0.0415, -0.15)
+	display.rotation.x = -PI / 2.0
+	desk.add_child(display)
+
+	var run := _lamp_material(LAMP_GREEN)
+	var reset := _lamp_material(LAMP_BLUE)
+	var cap_material := _metal(LAMP_RED, 0.1, 0.35)
+	_console_button(desk, device_id, "select", Vector3(-0.24, 0.04, 0.1), 0.032, _metal(Color("#d1d5db"), 0.2, 0.4), "NEXT")
+	_console_button(desk, device_id, "run", Vector3(-0.1, 0.045, 0.1), 0.045, run, "RUN")
+	_console_button(desk, device_id, "reset", Vector3(0.03, 0.04, 0.1), 0.032, reset, "RESET")
+	desk.add_child(_cylinder(0.1, 0.1, 0.012, Vector3(0.2, 0.036, 0.08), _metal(Color("#facc15"), 0.1, 0.6)))
+	var cap := _cylinder(0.075, 0.065, 0.05, Vector3(0.2, 0.075, 0.08), cap_material)
+	desk.add_child(cap)
+	_console_button(desk, device_id, "estop", Vector3(0.2, 0.075, 0.08), 0.11, null, "E-STOP")
+
+	root.add_child(_label("%s · %s" % [c["name"], device_id], Vector3(0.0, 1.6, 0.0), CONSOLE_COLOR))
+	_consoles[device_id] = {
+		"root": root,
+		"display": display,
+		"cap": cap,
+		"run": run,
+		"reset": reset,
+		"tower": tower,
+		"glow": glow,
+	}
+
+
+## A clickable button on a console desk, with its caption below. material null: only the hit area.
+func _console_button(desk: Node3D, device_id: String, button: String, at: Vector3, radius: float, material, caption: String) -> void:
+	if material != null:
+		desk.add_child(_cylinder(radius, radius, 0.04, at, material))
+	var body := StaticBody3D.new()
+	body.position = at
+	var shape := CollisionShape3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = maxf(radius * 1.3, 0.05)
+	shape.shape = sphere
+	body.add_child(shape)
+	desk.add_child(body)
+	body.input_event.connect(
+		func(_cam, event, _pos, _normal, _idx):
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				press_console(device_id, button)
+	)
+	var label := Label3D.new()
+	label.text = caption
+	label.font_size = 16
+	label.pixel_size = 0.0012
+	label.outline_size = 0
+	label.modulate = Color(1, 1, 1, 0.8)
+	label.position = Vector3(at.x, 0.0315, at.z + radius + 0.025)
+	label.rotation.x = -PI / 2.0
+	desk.add_child(label)
+
+
+## Press a console button as an operator would; the mushroom twists out when pressed again.
+func press_console(device_id: String, button: String) -> void:
+	var d = _devices.get(device_id)
+	if d == null:
+		return
+	if button == "estop" and d.estop_pressed:
+		button = "release"
+	d.press(button)
+
+
+func _render_console(c: Dictionary, d) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	var blink := fmod(now, 1.0) < 0.5
+	var pulse := 0.6 + 0.4 * sin(now * 5.0)
+	var latched: bool = d.estopped or d.estop_pressed or d.panel.get("estop", {}).get("active", false)
+	var running: bool = d.panel.get("run") != null
+	var ready := false
+	for p in d.panel.get("prepared", []):
+		if p["sha256"] == d.selected and p["goodToGo"]:
+			ready = true
+	var text := "\n".join(d.display_lines())
+	if c["display"].text != text:
+		c["display"].text = text
+	c["cap"].position.y = 0.055 if d.estop_pressed else 0.075
+	_light_lamp(c["run"], LAMP_GREEN, pulse if running else (1.0 if ready and not latched and d.link == "online" else 0.0))
+	_light_lamp(c["reset"], LAMP_BLUE, 1.0 if latched and not d.estop_pressed and blink else 0.0)
+	var tower: Color = LAMP_RED if latched else (LAMP_BLUE if running else (LAMP_GREEN if d.link == "online" else Color("#64748b")))
+	var level: float = (1.0 if blink else 0.25) if d.estop_pressed else (pulse if running else 1.0)
+	_light_lamp(c["tower"], tower, level)
+	c["glow"].light_color = tower
+	c["glow"].light_energy = 0.6 * level
+
+
 func _guest(at: Vector3) -> void:
 	guest = Node3D.new()
 	guest.name = "Guest"
@@ -717,6 +862,43 @@ func _guest_model() -> Node3D:
 
 static func _vec(a: Array) -> Vector3:
 	return Vector3(a[0], a[1], a[2])
+
+
+static func _box(size: Vector3, at: Vector3, material: Material) -> MeshInstance3D:
+	var box := BoxMesh.new()
+	box.size = size
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = box
+	mesh.material_override = material
+	mesh.position = at
+	return mesh
+
+
+static func _cylinder(top: float, bottom: float, height: float, at: Vector3, material: Material) -> MeshInstance3D:
+	var cylinder := CylinderMesh.new()
+	cylinder.top_radius = top
+	cylinder.bottom_radius = bottom
+	cylinder.height = height
+	var mesh := MeshInstance3D.new()
+	mesh.mesh = cylinder
+	mesh.material_override = material
+	mesh.position = at
+	return mesh
+
+
+static func _lamp_material(color: Color) -> StandardMaterial3D:
+	var m := StandardMaterial3D.new()
+	m.albedo_color = color.darkened(0.6)
+	m.emission_enabled = true
+	m.emission = color
+	m.emission_energy_multiplier = 0.0
+	return m
+
+
+static func _light_lamp(material: StandardMaterial3D, color: Color, level: float) -> void:
+	material.emission = color
+	material.emission_energy_multiplier = 2.5 * level
+	material.albedo_color = color.darkened(0.6 - 0.4 * level)
 
 
 static func _translucent(color: Color, alpha: float) -> StandardMaterial3D:

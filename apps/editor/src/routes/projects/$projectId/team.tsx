@@ -5,6 +5,7 @@ import { Check, Info, ShieldCheck, Trash, UserPlus } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { PageBody, Panel } from '@/components/page'
+import { DeleteProjectPanel } from '@/components/project-delete'
 import { RoleBadge } from '@/components/project-ui'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -125,7 +126,7 @@ function TeamPage() {
               <UserPlus className="size-4 text-muted-foreground" />
               <Select value={invitee} onValueChange={setInvitee}>
                 <SelectTrigger size="sm" className="w-56 text-xs" data-testid="invite-person">
-                  <SelectValue placeholder="Add someone from the workspace" />
+                  <SelectValue placeholder="Add person…" />
                 </SelectTrigger>
                 <SelectContent>
                   {outsiders.map((p) => (
@@ -210,6 +211,7 @@ function TeamPage() {
           </div>
         </Panel>
       </div>
+      <DeleteProjectPanel project={project} />
     </PageBody>
   )
 }

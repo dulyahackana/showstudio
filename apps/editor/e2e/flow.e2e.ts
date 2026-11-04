@@ -82,7 +82,7 @@ test('editing is validated live and undoable', async ({ page }) => {
 
 test('safety reviewer sees the revision history', async ({ page }) => {
   await signInAs(page, 'sam')
-  await page.goto('/projects/dragon-awakens/review')
+  await page.goto('/projects/dragon-awakens/revisions')
   await expect(page.getByText('approved').first()).toBeVisible()
   await shot(page, '06-revisions')
 })
@@ -94,7 +94,7 @@ test('operator deploys, launches, triggers a sensor and e-stops', async ({ page 
   await expect(page.getByTestId('nav-project-lantern-night')).toHaveCount(0)
 
   await page.goto('/projects/dragon-awakens/deploy')
-  await expect(page.getByTestId('devices-online')).toHaveText(/12\/12 online/, { timeout: 30_000 })
+  await expect(page.getByTestId('devices-online')).toHaveText(/13\/13 online/, { timeout: 30_000 })
   await pick(page, 'deploy-revision-select', /^r1/)
   await page.getByTestId('deploy-show').click()
   await expect(page.getByTestId('good-to-go-dragon-awakens').first()).toBeVisible({ timeout: 30_000 })
@@ -102,7 +102,7 @@ test('operator deploys, launches, triggers a sensor and e-stops', async ({ page 
 
   // Second show for swapping.
   await page.goto('/projects/night-watch/deploy')
-  await expect(page.getByTestId('devices-online')).toHaveText(/12\/12 online/)
+  await expect(page.getByTestId('devices-online')).toHaveText(/13\/13 online/)
   await page.getByTestId('deploy-show').click()
   await expect(page.getByTestId('good-to-go-night-watch').first()).toBeVisible({ timeout: 30_000 })
 

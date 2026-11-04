@@ -17,12 +17,13 @@ import {
   SkipBack,
   ZoomIn,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { EditableContext } from '@/components/editable'
 import { EditorToolbar } from '@/components/editor-toolbar'
 import { IssuesList } from '@/components/issues-list'
 import { RevisionsPanel } from '@/components/revisions-panel'
+import { SidePanelToggle, useSidePanel } from '@/components/side-panel'
 import { StageScene, type StageSelection } from '@/components/three/stage-scene'
 import { framing, Glass, Viewport } from '@/components/three/viewport'
 import { Button } from '@/components/ui/button'
@@ -42,7 +43,7 @@ import { BehaviorsPanel } from '@/features/shows/behaviors-panel'
 import { Inspector } from '@/features/shows/inspector'
 import { type Playback, usePlayback } from '@/features/shows/playback'
 import { SettingsPanel } from '@/features/shows/settings-panel'
-import { Timeline } from '@/features/shows/timeline'
+import { TIMELINE_HEADER_W, Timeline } from '@/features/shows/timeline'
 import {
   draftKeys,
   draftTargetTracks,
@@ -55,7 +56,7 @@ import {
 import { assetUrl } from '@/lib/api'
 import { useDocEditor } from '@/lib/doc-editor'
 import { formatMs } from '@/lib/format'
-import { assetsQuery, docQuery, useShowContext } from '@/lib/queries'
+import { assetsQuery, docQuery, docsQuery, useShowContext } from '@/lib/queries'
 
 export const Route = createFileRoute('/projects/$projectId/show')({
   loader: ({ context, params }) => context.queryClient.ensureQueryData(docQuery(params.projectId)),
@@ -79,7 +80,17 @@ function useAudioDurations(ids: string[]): Record<string, number> {
   return Object.fromEntries(ids.map((id, i) => [id, results[i]?.data ?? 2000]))
 }
 
-function Transport({ playback, zoom, setZoom }: { playback: Playback; zoom: number; setZoom: (z: number) => void }) {
+function Transport({
+  playback,
+  zoom,
+  setZoom,
+  onFit,
+}: {
+  playback: Playback
+  zoom: number
+  setZoom: (z: number) => void
+  onFit: () => void
+}) {
   const t = useSelector(playback.store, (s) => s.t)
   const playing = useSelector(playback.store, (s) => s.playing)
   const loop = useSelector(playback.store, (s) => s.loop)
@@ -117,6 +128,9 @@ function Transport({ playback, zoom, setZoom }: { playback: Playback; zoom: numb
           disabled={false}
           onValueChange={([z = 60]) => setZoom(z)}
         />
+        <Button size="xs" variant="ghost" onClick={onFit} title="Fit the whole show in view" data-testid="zoom-fit">
+          Fit
+        </Button>
       </div>
     </div>
   )
@@ -131,14 +145,23 @@ const clipShow = (show: ShowDefinition, behaviorId: string): ShowDefinition => {
 function ShowEditor() {
   const { projectId: id } = Route.useParams()
   const editor = useDocEditor(id, 'show')
+  const inspectorPanel = useSidePanel('show-inspector')
   const { draft, update } = editor
   const { environment, characters, loading, error } = useShowContext(draft.environment)
+  const { data: envDocs = [] } = useQuery(docsQuery('environment'))
   const { data: assets = [] } = useQuery(assetsQuery)
   const audioAssets = useMemo(() => assets.filter((a) => a.kind === 'audio'), [assets])
   const [target, setTarget] = useState<Target>({ kind: 'main' })
   const [selection, setSelection] = useState<Selection | null>(null)
   const [focusDevice, setFocusDevice] = useState<string | null>(null)
   const [zoom, setZoom] = useState(60)
+  // The timeline opens with the whole show in view; "Fit" brings it back after zooming.
+  const timelineBox = useRef<HTMLDivElement>(null)
+  const fitZoom = (durationMs: number) => {
+    const width = timelineBox.current?.clientWidth ?? 0
+    if (width && durationMs)
+      setZoom(Math.max(15, Math.min(300, Math.floor((width - TIMELINE_HEADER_W - 24) / (durationMs / 1000)))))
+  }
   const [tab, setTab] = useState('timeline')
 
   const issues = useMemo(
@@ -173,6 +196,14 @@ function ShowEditor() {
   useEffect(() => {
     if (!current) setTarget({ kind: 'main' })
   }, [current])
+  // Fit once per timeline (the main show, or a sensor response's clip) when it first shows.
+  const fitted = useRef<string | null>(null)
+  const fitKey = current ? `${target.kind === 'main' ? 'main' : target.id}:${current.durationMs}` : null
+  useEffect(() => {
+    if (!fitKey || fitted.current === fitKey || !timelineBox.current?.clientWidth || !current) return
+    fitted.current = fitKey
+    fitZoom(current.durationMs)
+  })
 
   const editTracks = useCallback(
     (fn: (t: Draft<Tracks>) => void, key?: string) =>
@@ -295,6 +326,10 @@ function ShowEditor() {
         })()
       : null
 
+  // The show is pinned to the layout revision it was made and approved against; say when a newer one exists.
+  const newerLayout = envDocs.find((e) => e.id === draft.environment.id)?.latestRevision ?? 0
+  const outdated = newerLayout > draft.environment.revision ? newerLayout : null
+
   return (
     <EditableContext.Provider value={editor.canEdit}>
       <div className="flex min-h-0 flex-1 flex-col">
@@ -304,6 +339,7 @@ function ShowEditor() {
           embedded
           subtitle={`${environment.name} r${draft.environment.revision} · ${formatMs(draft.durationMs, false)} · ${draft.behaviors.length} sensor responses`}
           requiresReview
+          end={<SidePanelToggle panel={inspectorPanel} label="inspector" />}
         />
         <ResizablePanelGroup orientation="vertical" className="min-h-0 flex-1">
           <ResizablePanel defaultSize="56%" minSize="20%">
@@ -321,6 +357,30 @@ function ShowEditor() {
                             r{draft.environment.revision}
                           </span>
                         </Glass>
+                        {outdated && (
+                          <Glass
+                            className="flex items-center gap-2 border-motion/40 py-1 pr-1 pl-3 text-xs"
+                            data-testid="newer-layout"
+                          >
+                            <span>
+                              Layout r{outdated} is published; this show still uses r{draft.environment.revision}
+                            </span>
+                            {editor.canEdit && (
+                              <Button
+                                size="xs"
+                                variant="outline"
+                                onClick={() =>
+                                  update((d) => {
+                                    d.environment.revision = outdated
+                                  })
+                                }
+                                title="Re-pin the show to the new layout. Publish it again for review afterwards."
+                              >
+                                Use r{outdated}
+                              </Button>
+                            )}
+                          </Glass>
+                        )}
                         {activeBehaviors.map((b) => (
                           <Glass
                             key={b}
@@ -400,7 +460,7 @@ function ShowEditor() {
                 </Viewport>
               </ResizablePanel>
               <ResizableHandle />
-              <ResizablePanel defaultSize="28%" minSize="18%">
+              <ResizablePanel minSize="18%" {...inspectorPanel.panelProps('28%')}>
                 {current && (
                   <Inspector
                     tracks={current.tracks}
@@ -447,7 +507,12 @@ function ShowEditor() {
                     <Settings2 /> Settings
                   </TabsTrigger>
                 </TabsList>
-                <Transport playback={playback} zoom={zoom} setZoom={setZoom} />
+                <Transport
+                  playback={playback}
+                  zoom={zoom}
+                  setZoom={setZoom}
+                  onFit={() => current && fitZoom(current.durationMs)}
+                />
               </div>
               {behavior && (tab === 'timeline' || tab === 'behaviors') && (
                 <div className="flex items-center gap-2 border-b bg-primary/10 px-3 py-1.5 text-xs">
@@ -459,7 +524,7 @@ function ShowEditor() {
                   </Button>
                 </div>
               )}
-              <TabsContent value="timeline" className="min-h-0 flex-1">
+              <TabsContent value="timeline" className="min-h-0 flex-1" ref={timelineBox}>
                 {current && (
                   <Timeline
                     tracks={current.tracks}
@@ -517,7 +582,7 @@ function ShowEditor() {
                 />
               </TabsContent>
               <TabsContent value="revisions" className="min-h-0 flex-1 overflow-auto">
-                <RevisionsPanel docId={id} kind="show" />
+                <RevisionsPanel docId={id} kind="show" editor={editor} />
               </TabsContent>
               <TabsContent value="settings" className="min-h-0 flex-1">
                 <SettingsPanel show={draft} update={update} />

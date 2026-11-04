@@ -28,6 +28,7 @@ import { Route as ProjectsProjectIdIndexRouteImport } from './routes/projects/$p
 import { Route as ProjectsProjectIdDeployRouteImport } from './routes/projects/$projectId/deploy'
 import { Route as ProjectsProjectIdLaunchRouteImport } from './routes/projects/$projectId/launch'
 import { Route as ProjectsProjectIdReviewRouteImport } from './routes/projects/$projectId/review'
+import { Route as ProjectsProjectIdRevisionsRouteImport } from './routes/projects/$projectId/revisions'
 import { Route as ProjectsProjectIdShowRouteImport } from './routes/projects/$projectId/show'
 import { Route as ProjectsProjectIdTeamRouteImport } from './routes/projects/$projectId/team'
 
@@ -126,6 +127,12 @@ const ProjectsProjectIdReviewRoute = ProjectsProjectIdReviewRouteImport.update({
   path: '/review',
   getParentRoute: () => ProjectsProjectIdRoute,
 } as any)
+const ProjectsProjectIdRevisionsRoute =
+  ProjectsProjectIdRevisionsRouteImport.update({
+    id: '/revisions',
+    path: '/revisions',
+    getParentRoute: () => ProjectsProjectIdRoute,
+  } as any)
 const ProjectsProjectIdShowRoute = ProjectsProjectIdShowRouteImport.update({
   id: '/show',
   path: '/show',
@@ -155,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/projects/$projectId/deploy': typeof ProjectsProjectIdDeployRoute
   '/projects/$projectId/launch': typeof ProjectsProjectIdLaunchRoute
   '/projects/$projectId/review': typeof ProjectsProjectIdReviewRoute
+  '/projects/$projectId/revisions': typeof ProjectsProjectIdRevisionsRoute
   '/projects/$projectId/show': typeof ProjectsProjectIdShowRoute
   '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
   '/environments/$id/': typeof EnvironmentsIdIndexRoute
@@ -176,6 +184,7 @@ export interface FileRoutesByTo {
   '/projects/$projectId/deploy': typeof ProjectsProjectIdDeployRoute
   '/projects/$projectId/launch': typeof ProjectsProjectIdLaunchRoute
   '/projects/$projectId/review': typeof ProjectsProjectIdReviewRoute
+  '/projects/$projectId/revisions': typeof ProjectsProjectIdRevisionsRoute
   '/projects/$projectId/show': typeof ProjectsProjectIdShowRoute
   '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
   '/environments/$id': typeof EnvironmentsIdIndexRoute
@@ -200,6 +209,7 @@ export interface FileRoutesById {
   '/projects/$projectId/deploy': typeof ProjectsProjectIdDeployRoute
   '/projects/$projectId/launch': typeof ProjectsProjectIdLaunchRoute
   '/projects/$projectId/review': typeof ProjectsProjectIdReviewRoute
+  '/projects/$projectId/revisions': typeof ProjectsProjectIdRevisionsRoute
   '/projects/$projectId/show': typeof ProjectsProjectIdShowRoute
   '/projects/$projectId/team': typeof ProjectsProjectIdTeamRoute
   '/environments/$id/': typeof EnvironmentsIdIndexRoute
@@ -225,6 +235,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId/deploy'
     | '/projects/$projectId/launch'
     | '/projects/$projectId/review'
+    | '/projects/$projectId/revisions'
     | '/projects/$projectId/show'
     | '/projects/$projectId/team'
     | '/environments/$id/'
@@ -246,6 +257,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId/deploy'
     | '/projects/$projectId/launch'
     | '/projects/$projectId/review'
+    | '/projects/$projectId/revisions'
     | '/projects/$projectId/show'
     | '/projects/$projectId/team'
     | '/environments/$id'
@@ -269,6 +281,7 @@ export interface FileRouteTypes {
     | '/projects/$projectId/deploy'
     | '/projects/$projectId/launch'
     | '/projects/$projectId/review'
+    | '/projects/$projectId/revisions'
     | '/projects/$projectId/show'
     | '/projects/$projectId/team'
     | '/environments/$id/'
@@ -425,6 +438,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectsProjectIdReviewRouteImport
       parentRoute: typeof ProjectsProjectIdRoute
     }
+    '/projects/$projectId/revisions': {
+      id: '/projects/$projectId/revisions'
+      path: '/revisions'
+      fullPath: '/projects/$projectId/revisions'
+      preLoaderRoute: typeof ProjectsProjectIdRevisionsRouteImport
+      parentRoute: typeof ProjectsProjectIdRoute
+    }
     '/projects/$projectId/show': {
       id: '/projects/$projectId/show'
       path: '/show'
@@ -462,6 +482,7 @@ interface ProjectsProjectIdRouteChildren {
   ProjectsProjectIdDeployRoute: typeof ProjectsProjectIdDeployRoute
   ProjectsProjectIdLaunchRoute: typeof ProjectsProjectIdLaunchRoute
   ProjectsProjectIdReviewRoute: typeof ProjectsProjectIdReviewRoute
+  ProjectsProjectIdRevisionsRoute: typeof ProjectsProjectIdRevisionsRoute
   ProjectsProjectIdShowRoute: typeof ProjectsProjectIdShowRoute
   ProjectsProjectIdTeamRoute: typeof ProjectsProjectIdTeamRoute
   ProjectsProjectIdIndexRoute: typeof ProjectsProjectIdIndexRoute
@@ -471,6 +492,7 @@ const ProjectsProjectIdRouteChildren: ProjectsProjectIdRouteChildren = {
   ProjectsProjectIdDeployRoute: ProjectsProjectIdDeployRoute,
   ProjectsProjectIdLaunchRoute: ProjectsProjectIdLaunchRoute,
   ProjectsProjectIdReviewRoute: ProjectsProjectIdReviewRoute,
+  ProjectsProjectIdRevisionsRoute: ProjectsProjectIdRevisionsRoute,
   ProjectsProjectIdShowRoute: ProjectsProjectIdShowRoute,
   ProjectsProjectIdTeamRoute: ProjectsProjectIdTeamRoute,
   ProjectsProjectIdIndexRoute: ProjectsProjectIdIndexRoute,

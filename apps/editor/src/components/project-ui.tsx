@@ -5,6 +5,7 @@ import { Check, Plus } from 'lucide-react'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { NumberInput } from '@/components/fields'
+import { PersonAvatar } from '@/components/person'
 import { ToneBadge } from '@/components/status'
 import { Button } from '@/components/ui/button'
 import {
@@ -46,7 +47,7 @@ export const ROLE_TONE: Record<ProjectRole, string> = {
   owner: 'text-primary border-primary/30 bg-primary/10',
   editor: 'text-motion border-motion/30 bg-motion/10',
   reviewer: 'text-audio border-audio/30 bg-audio/10',
-  operator: 'text-light border-light/30 bg-light/10',
+  operator: 'text-sky-300 border-sky-300/30 bg-sky-300/10',
   viewer: 'text-muted-foreground border-border bg-muted/50',
 }
 
@@ -64,18 +65,16 @@ export function TeamAvatars({ project, max = 5 }: { project: Project; max?: numb
   const { data: workspace } = useQuery(workspaceQuery)
   const shown = project.members.slice(0, max)
   return (
-    <span className="flex -space-x-1.5">
+    <span className="flex -space-x-1">
       {shown.map((m) => (
-        <span
+        <PersonAvatar
           key={m.user}
+          name={m.user}
           title={`${workspace?.directory.find((p) => p.name === m.user)?.displayName ?? m.user} · ${m.role}`}
-          className="flex size-6 items-center justify-center rounded-full border-2 border-card bg-surface-2 text-[9px] font-semibold uppercase"
-        >
-          {m.user.slice(0, 2)}
-        </span>
+        />
       ))}
       {project.members.length > max && (
-        <span className="flex size-6 items-center justify-center rounded-full border-2 border-card bg-muted text-[9px]">
+        <span className="flex size-6 items-center justify-center rounded-full bg-muted text-[10px] text-muted-foreground ring-2 ring-background">
           +{project.members.length - max}
         </span>
       )}
@@ -83,9 +82,9 @@ export function TeamAvatars({ project, max = 5 }: { project: Project; max?: numb
   )
 }
 
-const STAGE_TONE: Record<StepKey, 'muted' | 'warn' | 'info' | 'ok'> = {
+const STAGE_TONE: Record<StepKey, 'muted' | 'review' | 'info' | 'ok'> = {
   animate: 'muted',
-  review: 'warn',
+  review: 'review',
   deploy: 'info',
   launch: 'ok',
 }
@@ -96,15 +95,19 @@ export function StageBadge({ stage }: { stage: ProjectStage }) {
 }
 
 /** Four dots, one per step: done, current, upcoming. */
-export function StepDots({ stage }: { stage: ProjectStage }) {
+export function StepDots({ stage, small }: { stage: ProjectStage; small?: boolean }) {
   const current = stepIndex(stage.stage)
   return (
-    <span className="flex items-center gap-1" title={`Step ${current + 1} of 4: ${STEPS[current]?.label}`}>
+    <span
+      className={cn('flex shrink-0 items-center', small ? 'gap-0.5' : 'gap-1')}
+      title={`Step ${current + 1} of 4: ${STEPS[current]?.label} · ${stage.label}`}
+    >
       {STEPS.map((s, i) => (
         <span
           key={s.key}
           className={cn(
-            'h-1.5 w-4 rounded-full',
+            'rounded-full',
+            small ? 'h-1 w-2.5' : 'h-1.5 w-4',
             i < current ? 'bg-primary/70' : i === current ? (stage.live ? 'bg-motion' : 'bg-primary') : 'bg-muted',
             i === current && 'shadow-[0_0_8px_var(--primary)]',
           )}
@@ -115,8 +118,9 @@ export function StepDots({ stage }: { stage: ProjectStage }) {
 }
 
 /**
- * The project's pipeline as navigation: Animate → Review → Deploy → Launch. Steps
- * before the current stage show a check, the current one is highlighted.
+ * The project's pipeline as navigation: Animate → Review → Deploy → Launch. Two
+ * separate signals: the highlighted pill is the page you are on; the circles are the
+ * project's progress (check = done, green ring = waiting for someone, grey = later).
  */
 export function ProjectStepper({ project }: { project: Project }) {
   const stage = useProjectStage(project)
@@ -130,14 +134,15 @@ export function ProjectStepper({ project }: { project: Project }) {
             to={s.to}
             params={{ projectId: project.id }}
             className="group flex h-8 items-center gap-2 rounded-md px-2.5 text-sm text-muted-foreground transition hover:bg-surface-2 hover:text-foreground"
-            activeProps={{ className: 'bg-surface-2 text-foreground ring-1 ring-border' }}
+            activeProps={{ className: 'bg-primary/10 text-foreground ring-1 ring-primary/40' }}
+            title={i === current ? `${s.label}: this is where the project is now` : s.blurb}
             data-testid={`step-${s.key}`}
           >
             <span
               className={cn(
                 'flex size-5 items-center justify-center rounded-full border text-[10px] font-semibold',
                 i < current && 'border-primary/40 bg-primary/15 text-primary',
-                i === current && 'border-primary bg-primary text-primary-foreground',
+                i === current && 'border-primary text-primary ring-2 ring-primary/20',
                 i > current && 'border-border',
               )}
             >

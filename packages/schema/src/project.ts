@@ -52,6 +52,10 @@ export const Project = z
     createdBy: z.string(),
     myRole: ProjectRole.nullable().describe('Your role in this project; null for admins who are not members'),
     members: z.array(ProjectMember),
+    deletedAt: Timestamp.nullable().describe(
+      'Set while the project is deleted: hidden from lists, read-only, taken off the controllers; owners and admins can recover it',
+    ),
+    deletedBy: z.string().nullable(),
   })
   .meta({ id: 'Project', description: 'One show, from first keyframe to launch, and the team allowed to work on it' })
 export type Project = z.infer<typeof Project>
@@ -64,6 +68,9 @@ export const CreateProjectRequest = z
 export const SetMemberRequest = z.object({ role: ProjectRole }).meta({ id: 'SetMemberRequest' })
 
 export const ProjectParams = z.object({ projectId: Id })
+export const ProjectListQuery = z.object({
+  status: z.enum(['active', 'deleted']).default('active').describe('deleted: the projects you could recover'),
+})
 export const MemberParams = z.object({ projectId: Id, user: z.string().regex(/^[a-z0-9][a-z0-9._-]{0,59}$/) })
 
 export const Person = z

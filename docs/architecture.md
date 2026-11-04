@@ -52,7 +52,7 @@ flowchart LR
 
 **Deploy → good to go.** Operator deploys an approved revision → all-or-nothing pre-check (every device online, right kind, running the pinned definition) → desired state recorded → gateway sends `deploy` → each device downloads, verifies hash + signature + schema, re-validates against its own limits, fetches and verifies audio, writes atomically, reports `staged` → deployment is **good to go** when every target reports the same verified hash.
 
-**Launch → run.** Operator confirms the zone is clear → `launch {startAt = now + lead}` to every device → each converts to its local clock and starts together → plays from the local copy. Sensor events go to the park-local show controller, which decides (window, cooldown, no overlap per device) and broadcasts the start time. The cloud can disappear mid-show.
+**Launch → run.** Operator confirms the zone is clear → `launch {startAt = now + lead}` to every device → each converts to its local clock and starts together → plays from the local copy. Sensor events go to the park-local show controller, which decides (window, cooldown, no overlap per device) and broadcasts the start time. The cloud can disappear mid-show. When the show ends on its own, responses marked "between shows" keep answering guests (standby) until an operator stops it or launches another show.
 
 **E-stop.** Any signed-in user; the command goes to devices _before_ any bookkeeping; latched in the database and re-sent to devices that reconnect; only an operator can reset. Software e-stop complements, never replaces, the hard-wired safety circuit.
 

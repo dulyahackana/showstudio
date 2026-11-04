@@ -10,6 +10,7 @@ import { EditorToolbar } from '@/components/editor-toolbar'
 import { NumberInput, Row, Vec3Input } from '@/components/fields'
 import { IssuesList } from '@/components/issues-list'
 import { RevisionsPanel } from '@/components/revisions-panel'
+import { SidePanelToggle, useSidePanel } from '@/components/side-panel'
 import { CharacterModel, type Pose } from '@/components/three/character-model'
 import { framing, Glass, Viewport } from '@/components/three/viewport'
 import { Button } from '@/components/ui/button'
@@ -38,6 +39,7 @@ const unit = (j: Pick<Joint, 'type'>) => (j.type === 'revolute' ? '°' : 'm')
 function CharacterEditor() {
   const { id } = Route.useParams()
   const editor = useDocEditor(id, 'character')
+  const sidePanel = useSidePanel('character-panel')
   const { draft, update } = editor
   const glb = useGlbInfo(draft.model?.assetId)
   const { data: assets = [] } = useQuery(assetsQuery)
@@ -126,6 +128,7 @@ function CharacterEditor() {
           issues={issues}
           title={draft.name}
           subtitle={`Character · ${draft.joints.length} joints · ${id}`}
+          end={<SidePanelToggle panel={sidePanel} label="joints panel" />}
         />
         <ResizablePanelGroup orientation="horizontal" className="min-h-0 flex-1">
           <ResizablePanel defaultSize="58%" minSize="25%">
@@ -188,7 +191,7 @@ function CharacterEditor() {
             </Viewport>
           </ResizablePanel>
           <ResizableHandle withHandle />
-          <ResizablePanel defaultSize="42%" minSize="25%">
+          <ResizablePanel minSize="25%" {...sidePanel.panelProps('42%')}>
             <Tabs value={tab} onValueChange={setTab} className="flex h-full flex-col gap-0">
               <div className="border-b px-3">
                 <TabsList variant="line" className="h-11">
@@ -514,7 +517,7 @@ function CharacterEditor() {
                 />
               </TabsContent>
               <TabsContent value="revisions" className="min-h-0 flex-1 overflow-auto">
-                <RevisionsPanel docId={id} kind="character" />
+                <RevisionsPanel docId={id} kind="character" editor={editor} />
               </TabsContent>
             </Tabs>
           </ResizablePanel>

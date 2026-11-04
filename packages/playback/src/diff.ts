@@ -1,4 +1,4 @@
-import type { ShowDefinition, Tracks } from '@studio/schema'
+import type { Behavior, ShowDefinition, Tracks } from '@studio/schema'
 import { canonicalJson } from './canonical.ts'
 
 export interface DiffEntry {
@@ -9,6 +9,22 @@ export interface DiffEntry {
 }
 
 const same = (a: unknown, b: unknown) => canonicalJson(a) === canonicalJson(b)
+const sec = (ms: number) => `${Number((ms / 1000).toFixed(2))} s`
+
+/** What a reviewer needs to judge a changed sensor response: before → after for every setting. */
+function behaviorChanges(a: Behavior, b: Behavior): string {
+  const out: string[] = []
+  const window = (w: Behavior['window']) => (w ? `${sec(w.fromMs)}–${sec(w.toMs)}` : 'any time')
+  if (a.name !== b.name) out.push(`renamed from "${a.name}"`)
+  if (a.enabled !== b.enabled) out.push(b.enabled ? 'enabled' : 'disabled')
+  if (a.trigger.sensorId !== b.trigger.sensorId || a.trigger.event !== b.trigger.event)
+    out.push(`trigger ${a.trigger.sensorId} ${a.trigger.event} → ${b.trigger.sensorId} ${b.trigger.event}`)
+  if (!same(a.window, b.window)) out.push(`window ${window(a.window)} → ${window(b.window)}`)
+  if (a.blendMs !== b.blendMs) out.push(`blend ${sec(a.blendMs)} → ${sec(b.blendMs)}`)
+  if (a.durationMs !== b.durationMs) out.push(`clip ${sec(a.durationMs)} → ${sec(b.durationMs)}`)
+  if (a.cooldownMs !== b.cooldownMs) out.push(`cooldown ${sec(a.cooldownMs)} → ${sec(b.cooldownMs)}`)
+  return out.join(', ')
+}
 const count = (n: number, noun: string) => `${n} ${noun}${n === 1 ? '' : 's'}`
 
 function diffTracks(a: Tracks, b: Tracks, prefix: string, out: DiffEntry[]) {
@@ -60,13 +76,21 @@ export function diffShows(a: ShowDefinition, b: ShowDefinition): DiffEntry[] {
         area: 'behaviors',
         target: x.name,
         change: 'added',
-        detail: `on ${x.trigger.sensorId}:${x.trigger.event}`,
+        detail: `on ${x.trigger.sensorId}:${x.trigger.event}${x.standby ? ', also between shows' : ''}`,
       })
     else if (!same(prev, x)) {
-      const { tracks: ta, ...ma } = prev
-      const { tracks: tb, ...mb } = x
+      // Standby is called out on its own: it lets figures move with no show running.
+      const { tracks: ta, standby: sa, ...ma } = prev
+      const { tracks: tb, standby: sb, ...mb } = x
+      if (!sa !== !sb)
+        out.push({
+          area: 'behaviors',
+          target: x.name,
+          change: 'changed',
+          detail: sb ? 'now also answers guests between shows' : 'no longer answers between shows',
+        })
       if (!same(ma, mb))
-        out.push({ area: 'behaviors', target: x.name, change: 'changed', detail: 'trigger/timing settings' })
+        out.push({ area: 'behaviors', target: x.name, change: 'changed', detail: behaviorChanges(prev, x) })
       diffTracks(ta, tb, `${x.name}: `, out)
     }
   }

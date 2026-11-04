@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { ShowBundle } from '@studio/schema'
 import { sampleJoint, sampleLight } from './interpolate.ts'
-import { BehaviorScheduler, sampleFrame } from './runtime.ts'
+import { BehaviorScheduler, sampleFrame, standbyBundle } from './runtime.ts'
 import { audioVectors, errorCodes, type Vectors } from './vectors.ts'
 
 /*
@@ -51,6 +51,10 @@ describe('playback conformance vectors', () => {
     for (const step of c.steps) {
       expect(scheduler.trigger(step.sensorId, step.event, step.t), `t=${step.t}`).toEqual(step.started)
     }
+  })
+
+  it.each(vectors.standby)('standby: $name', (c) => {
+    expect(standbyBundle(ShowBundle.parse(c.bundle))).toEqual(c.standby)
   })
 
   it.each(vectors.deviceChecks)('device check: $name', (c) => {
