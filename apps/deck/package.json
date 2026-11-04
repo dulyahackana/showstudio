@@ -7,10 +7,11 @@
   "scripts": {
     "dev": "slidev --open false",
     "build": "slidev build",
-    "export": "slidev export --output dist/show-studio.pdf"
+    "export": "slidev export --dark --wait 2500 --timeout 120000 --output dist/show-studio.pdf"
   },
   "devDependencies": {
     "@slidev/cli": "52.14.1",
-    "@slidev/theme-default": "0.25.0"
+    "@slidev/theme-default": "0.25.0",
+    "playwright-chromium": "1.64.1"
   }
 }
