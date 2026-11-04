@@ -944,6 +944,96 @@ DRAFT: to confirm. Incremental, not "everything on first release": each phase en
 -->
 ---
 
+<Rise><div class="kicker">03 · First 13 weeks</div></Rise>
+<Rise :delay="80"><h1>Week by week, <span class="serif grad">lane by lane</span></h1></Rise>
+
+<div class="lanes mt-5">
+  <Rise :delay="140"><div class="lane-row"><div></div><div class="wk">W1–2<span class="gate">◆ G1</span></div><div class="wk">W3–4</div><div class="wk">W5–6<span class="gate">◆ G2</span></div><div class="wk">W7–8</div><div class="wk">W9–10<span class="gate">◆ G3</span></div><div class="wk">W11–13<span class="gate">◆ G4</span></div></div></Rise>
+  <Rise :delay="200"><div class="lane-row"><div class="lane" style="--c: var(--indigo)">Edge<small>embedded · robotics</small></div><div class="cell"><b>Controller</b>, I/O and limits agreed; parts ordered in W0</div><div class="cell"><b>Rust agent</b>: enrol, desired state, heartbeat. <b>Test bay</b> built</div><div class="cell"><b>Signed show</b> plays on the bay; e-stop → STO; HIL in CI</div><div class="cell">Light, audio, sensor <b>adapters</b>; edge gateway on park hardware</div><div class="cell"><b>Install</b> at the pilot; time sync; shadow runs nightly</div><div class="cell"><b>Fault injection</b> on site; motion tuning; SAT fixes</div></div></Rise>
+  <Rise :delay="310"><div class="lane-row"><div class="lane" style="--c: var(--emerald)">Platform<small>tech lead · backend</small></div><div class="cell"><b>Contracts v1</b> frozen: protocol, bundle, limits. IaC, CI/CD</div><div class="cell"><b>Device certs</b>, mTLS, signing in KMS; agent ↔ fleet manager</div><div class="cell"><b>Studio → bay</b> deploy with no manual step; telemetry</div><div class="cell"><b>Offline park</b>: cache, local decisions, store and forward</div><div class="cell"><b>Dashboards</b> and alerts for the pilot; backups, audit export</div><div class="cell"><b>On-call</b>, runbooks, restore drill; release train</div></div></Rise>
+  <Rise :delay="420"><div class="lane-row"><div class="lane" style="--c: var(--cyan)">Studio<small>3D · frontend · design</small></div><div class="cell">Designer <b>shadows</b> the pilot's creators; prototype studio as is</div><div class="cell">Hires land; <b>pilot figure</b> rigged from real joints and limits</div><div class="cell"><b>Animate</b> the pilot figure; validator uses controller limits</div><div class="cell"><b>Light, audio</b> and sensor-response tracks for the pilot</div><div class="cell"><b>Review</b> and approval; control room for operators</div><div class="cell">Creators author the <b>opening show</b>; fixes from real use</div></div></Rise>
+  <Rise :delay="530"><div class="lane-row"><div class="lane" style="--c: var(--danger)">Safety &amp; park<small>safety owner · park ops</small></div><div class="cell"><b>HARA</b> starts: hazards, safety concept, hardwired stop</div><div class="cell">Safety requirements → <b>limits</b> in the validator; site survey</div><div class="cell"><b>FMEA</b> on the bay; e-stop tests witnessed</div><div class="cell"><b>Install plan</b>, operator SOPs and training</div><div class="cell"><b>Shadow mode</b>, no guests; daily fault review</div><div class="cell"><b>Site acceptance</b> test, sign-off, operators trained</div></div></Rise>
+</div>
+
+<Rise :delay="700">
+  <div class="glass !py-2.5 !px-4 mt-4 flex items-center gap-5 text-[0.66rem] muted">
+    <b class="text-white whitespace-nowrap">Rhythm</b>
+    <span>Two-week sprints</span><span class="faint">·</span>
+    <span>Demo on the test bay every other Friday</span><span class="faint">·</span>
+    <span>Weekly risk review with hardware and safety</span><span class="faint">·</span>
+    <span>Decisions written as ADRs</span>
+  </div>
+</Rise>
+
+<!--
+DRAFT: to confirm. The critical path runs through the edge lane: controller lead time, test bay in week 4, hardware loop in week 6, install in week 9. The studio lane is off the critical path because the prototype studio already works, so its hires land last. The safety lane is what gates guests, which is why it starts on day one and not after the build.
+-->
+
+---
+
+<Rise><div class="kicker">03 · Gates</div></Rise>
+<Rise :delay="80"><h1>Every milestone has <span class="serif grad">an exit test</span></h1></Rise>
+
+<div class="gates grid grid-cols-5 gap-3 mt-5">
+  <Rise :delay="160">
+    <div class="glass  h-full flex flex-col">
+      <div class="flex items-center justify-between mb-1.5"><span class="chip">G1</span><span class="faint text-[0.6rem]">Week 2</span></div>
+      <h3>Contracts frozen</h3>
+      <ul class="flex-1"><li>Protocol v1 and bundle format signed off by hardware</li><li>Pilot figure limits on record</li><li>Controllers and safety PLC on order</li></ul>
+      <p class="signs">Signs: hardware · tech lead</p>
+    </div>
+  </Rise>
+  <Rise :delay="250">
+    <div class="glass lit h-full flex flex-col">
+      <div class="flex items-center justify-between mb-1.5"><span class="chip">G2</span><span class="faint text-[0.6rem]">Week 6</span></div>
+      <h3>Hardware loop</h3>
+      <ul class="flex-1"><li>Studio → signed bundle → test bay, no manual step</li><li>E-stop reaches STO with software down</li><li>HIL suite green every night</li></ul>
+      <p class="signs">Signs: tech lead · safety owner</p>
+    </div>
+  </Rise>
+  <Rise :delay="340">
+    <div class="glass  h-full flex flex-col">
+      <div class="flex items-center justify-between mb-1.5"><span class="chip">G3</span><span class="faint text-[0.6rem]">Week 9</span></div>
+      <h3>Shadow mode</h3>
+      <ul class="flex-1"><li>Whole attraction runs on site, no guests</li><li>Cloud link pulled: show and e-stop carry on</li><li>200 cycles, no unexplained fault</li></ul>
+      <p class="signs">Signs: park ops · me</p>
+    </div>
+  </Rise>
+  <Rise :delay="430">
+    <div class="glass  h-full flex flex-col">
+      <div class="flex items-center justify-between mb-1.5"><span class="chip">G4</span><span class="faint text-[0.6rem]">Week 13</span></div>
+      <h3>Guest-ready</h3>
+      <ul class="flex-1"><li>Site acceptance test passed</li><li>Safety owner and park sign off</li><li>Operators trained; on-call live</li></ul>
+      <p class="signs">Signs: safety owner · park</p>
+    </div>
+  </Rise>
+  <Rise :delay="520">
+    <div class="glass  h-full flex flex-col">
+      <div class="flex items-center justify-between mb-1.5"><span class="chip">G5</span><span class="faint text-[0.6rem]">Month 6</span></div>
+      <h3>Second park</h3>
+      <ul class="flex-1"><li>Onboarded from a template in two weeks</li><li>Staged OTA, SSO, second tenant isolated</li><li>Pilot: a month with no safety incident</li></ul>
+      <p class="signs">Signs: me · product</p>
+    </div>
+  </Rise>
+</div>
+<div class="flow mt-3"></div>
+
+<div class="grid grid-cols-3 gap-3 mt-3">
+  <Rise :delay="650"><div class="glass !p-3"><div class="kicker !mb-1">Month 4 · Harden</div><p>SSO, alerting, on-call rota, performance budgets, staged OTA</p></div></Rise>
+  <Rise :delay="730"><div class="glass !p-3"><div class="kicker !mb-1">Month 5 · Scale out</div><p>Second tenant, park templates, show swap, cost per park</p></div></Rise>
+  <Rise :delay="810"><div class="glass !p-3"><div class="kicker !mb-1">Month 6 · Second park</div><p>Second park live; retro; plan the next parks and hires</p></div></Rise>
+</div>
+
+<Rise :delay="900">
+  <p class="mt-3 text-[0.68rem] muted"><b class="text-white">Reported weekly:</b> idea-to-park lead time · show changes shipped · unplanned stops per 1,000 cycles · time to recover</p>
+</Rise>
+
+<!--
+DRAFT: to confirm. A gate is passed when its exit test passes, not when the date arrives; if a gate slips, scope moves, not the safety work. Each gate has a named signer outside the team where it matters: hardware for the contract, safety for the stop chain and guests, the park for the opening.
+-->
+
+---
+
 <Rise><div class="kicker">03 · Plan · Trade-offs</div></Rise>
 <Rise :delay="80"><h1>Build, buy, and what I'd <span class="serif grad">cut</span></h1></Rise>
 

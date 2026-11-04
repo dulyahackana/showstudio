@@ -880,3 +880,80 @@
   border: 1px solid rgb(61 220 151 / 35%);
   margin-bottom: 0.5rem;
 }
+
+/* Week-by-week plan: one row per lane, one column per two-week block. */
+.lanes {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.lane-row {
+  display: grid;
+  grid-template-columns: 6.2rem repeat(6, 1fr);
+  gap: 0.3rem;
+}
+
+.lanes .wk {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 0.4rem 0.1rem;
+  border-left: 1px solid rgb(255 255 255 / 14%);
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+.lanes .gate {
+  color: var(--emerald);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.lanes .lane {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-left: 0.6rem;
+  border-left: 2px solid var(--c);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.lanes .lane small {
+  font-size: 0.54rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.lanes .cell {
+  border-radius: 8px;
+  padding: 0.38rem 0.45rem;
+  background: rgb(255 255 255 / 3.5%);
+  border: 1px solid rgb(255 255 255 / 7%);
+  font-size: 0.6rem;
+  line-height: 1.38;
+  color: var(--muted);
+}
+
+.lanes .cell b {
+  color: var(--fg);
+  font-weight: 550;
+}
+
+.gates ul {
+  align-content: start;
+}
+
+.gates .glass li {
+  font-size: 0.68rem;
+  line-height: 1.42;
+}
+
+.gates .signs {
+  margin-top: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.58rem;
+  color: var(--faint);
+}
