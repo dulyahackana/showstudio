@@ -23,19 +23,19 @@ What this prototype implements, what is stubbed behind a real interface, and wha
 
 ## Stubbed (real interface, simple implementation)
 
-| Area               | Now                                    | Production                                                                                          |
-| ------------------ | -------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Identity           | Persona dev login (HMAC session)       | OIDC SSO (Entra / Okta / Keycloak); roles from IdP groups                                           |
-| Workspace          | One static tenant and people directory | Multi-tenant (tenant id on every row, row-level security); directory and groups from the IdP (SCIM) |
-| Device identity    | HMAC token per device                  | mTLS with per-device certificates; provisioning ceremony; rotation                                  |
-| Signing key        | RSA key file under `DATA_DIR`          | KMS/HSM-held key, rotation, multiple trusted keys on devices                                        |
-| Blob storage       | Content-addressed filesystem           | S3/GCS behind the same `BlobStore`; signed URLs instead of `?access_token=`                         |
-| Transport          | WebSocket gateway in the API process   | Sharded gateway or MQTT broker (EMQX / AWS IoT Core)                                                |
-| Park edge          | Devices talk to the cloud directly     | On-site edge gateway caching bundles; local operator console; offline launch                        |
-| Live updates in UI | 1 s polling (TanStack Query)           | Server-sent events / WebSocket push                                                                 |
-| Concurrent editing | Optimistic locking + reload            | Real-time co-editing (CRDT/Yjs) per track                                                           |
-| Observability      | Logs + metrics endpoint                | OpenTelemetry traces → Grafana/Datadog; alerting on device offline, deploy stuck, e-stop            |
-| Infrastructure     | docker-compose                         | Terraform; dev/staging/prod; blue-green API deploys                                                 |
+| Area               | Now                                                                                    | Production                                                                                                                   |
+| ------------------ | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Identity           | Persona dev login (HMAC session)                                                       | OIDC SSO (Entra / Okta / Keycloak); roles from IdP groups                                                                    |
+| Workspace          | One static tenant and people directory                                                 | Multi-tenant (tenant id on every row, row-level security); directory and groups from the IdP (SCIM)                          |
+| Device identity    | HMAC token per device                                                                  | mTLS with per-device certificates; provisioning ceremony; rotation                                                           |
+| Signing key        | RSA key file under `DATA_DIR`                                                          | KMS/HSM-held key, rotation, multiple trusted keys on devices                                                                 |
+| Blob storage       | Content-addressed filesystem                                                           | S3/GCS behind the same `BlobStore`; signed URLs instead of `?access_token=`                                                  |
+| Transport          | WebSocket gateway in the API process                                                   | Sharded gateway or MQTT broker (EMQX / AWS IoT Core)                                                                         |
+| Park edge          | Devices talk to the cloud directly; operator console (local e-stop, RUN via the cloud) | On-site edge gateway caching bundles and running the show controller; offline launch; console E-STOP wired to the safety PLC |
+| Live updates in UI | 1 s polling (TanStack Query)                                                           | Server-sent events / WebSocket push                                                                                          |
+| Concurrent editing | Optimistic locking + reload                                                            | Real-time co-editing (CRDT/Yjs) per track                                                                                    |
+| Observability      | Logs + metrics endpoint                                                                | OpenTelemetry traces → Grafana/Datadog; alerting on device offline, deploy stuck, e-stop                                     |
+| Infrastructure     | docker-compose                                                                         | Terraform; dev/staging/prod; blue-green API deploys                                                                          |
 
 ## Gaps and mitigations
 

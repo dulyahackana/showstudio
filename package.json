@@ -26,7 +26,9 @@
     "format": "biome check --write .",
     "build": "bun run --filter @studio/editor --filter @studio/api build",
     "e2e": "bun run --filter @studio/editor e2e",
-    "e2e:godot": "bun scripts/godot-e2e.ts"
+    "e2e:godot": "bun scripts/godot-e2e.ts",
+    "deck": "bun run --filter @studio/deck dev",
+    "deck:build": "bun run --filter @studio/deck build"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.4",

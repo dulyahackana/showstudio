@@ -713,14 +713,16 @@ func _console(c: Dictionary) -> void:
 	var mono := SystemFont.new()
 	mono.font_names = PackedStringArray(["SF Mono", "Menlo", "JetBrains Mono", "Consolas", "DejaVu Sans Mono", "monospace"])
 	display.font = mono
-	display.font_size = 22
+	display.font_size = 24
 	display.pixel_size = 0.001
 	display.width = 560.0
 	display.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	display.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	display.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	display.modulate = Color("#4ade80")
 	display.outline_size = 0
-	display.position = Vector3(0.0, 0.0415, -0.15)
+	# Label3D lays wrapped text out from its origin, so the origin sits at the screen's left margin.
+	display.position = Vector3(-0.28, 0.0415, -0.15)
 	display.rotation.x = -PI / 2.0
 	desk.add_child(display)
 

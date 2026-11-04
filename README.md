@@ -14,8 +14,8 @@ Lumen Parks (workspace)
 
 The demo location, **Hollow Hills**, has two environments that run at the same time and launch independently:
 
-- **The Dragon's Hoard**: a walk-through cavern. A rigged dragon wakes on its treasure, a chest lid opens, a wizard raises his staff and a halfling burglar waves at guests. It has 12 controllers (4 figures, 4 fixtures, 2 speaker zones, 2 sensors).
-- **Burrow Hollow**: a halfling burrow with a round door. The wizard comes knocking and the halfling answers. It has 8 controllers, including a doorbell.
+- **The Dragon's Hoard**: a walk-through cavern. A rigged dragon wakes on its treasure, a chest lid opens, a wizard raises his staff and a halfling burglar waves at guests. It has 13 controllers (4 figures, 4 fixtures, 2 speaker zones, 2 sensors, an operator console).
+- **Burrow Hollow**: a halfling burrow with a round door. The wizard comes knocking and the halfling answers. It has 9 controllers, including a doorbell and an operator console.
 
 The set dressing is about 45 CC0 models in total ([samples/ASSETS.md](samples/ASSETS.md)).
 
@@ -55,10 +55,10 @@ Or, production-shaped with Postgres: `docker compose up --build` → http://loca
 | Safety sign-off                                          | **Project → ② Review**: four-eyes approval signs the exact bundle                                                                         |
 | Revision history, downloads, revert                      | **Project → Revisions**: every revision, where it runs, definition (.json) and offline install package (.zip); restore as draft; redeploy |
 | Upload to dolls, lighting, sound, sensing → "good to go" | **Project → ③ Deploy**: approved + signed revision → every device verifies and stages → _good to go_                                      |
-| Operator "launch", multiple shows, swap                  | **Project → ④ Launch**, or the environment's **Control room**: zone-clear confirmation, synchronized start, swap, e-stop                  |
+| Operator "launch", multiple shows, swap                  | **Project → ④ Launch**, the environment's **Control room**, or the **operator console** on site (RUN, E-STOP): synchronized start, swap   |
 | See it play                                              | **Godot window**: figures, lights and speakers follow the controllers; walk the guest (WASD) into a sensor zone                           |
 
-The **Overview** shows every project in the column of the step it is waiting for, and every location live.
+**Home** shows your next steps, every project in the column of the step it is waiting for, and every attraction live.
 
 Personas: Alice (engineer, owns the projects), Sam (safety reviewer), Olga (operator), Admin. Priya (editor) and Tom (viewer) are on some teams too. **People & access** shows who is on which project and the permission matrix the server enforces. The draft project "Lantern Night" is invisible to Olga because she is not on its team.
 
@@ -75,6 +75,7 @@ contracts/          generated OpenAPI, AsyncAPI, JSON Schemas (committed, CI-che
 test-vectors/       conformance vectors (playback, scheduler, device checks, signatures) for every implementation
 samples/            sample GLB models, URDFs, audio (bun run gen:samples)
 scripts/            seed, sample generator, e2e stacks, Godot launcher
+apps/deck           the presentation (Slidev): `bun run deck`, published to GitHub Pages by .github/workflows/deck.yml
 docs/               architecture, data model, contracts, engine integration, ADRs
 ```
 

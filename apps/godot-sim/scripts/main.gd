@@ -91,6 +91,12 @@ func _ready() -> void:
 	var dolls := devices.filter(func(d): return d.kind == "doll")
 	if not dolls.is_empty():
 		await attraction.load_models(config["api"], dolls[0]._headers())
+	# --view console: start looking at the operator console instead of the whole stage.
+	var consoles := devices.filter(func(d): return d.kind == "console")
+	if config["view"] == "console" and not consoles.is_empty():
+		attraction.focus_console(consoles[0].device_id)
+	# --hud off: a clean frame (screenshots, recordings); H toggles it at runtime.
+	hud.visible = config["hud"] != "off"
 	if config["screenshot"] != "":
 		_screenshots(config["screenshot"], config["screenshot_delay"].split(","))
 
@@ -159,6 +165,8 @@ static func parse_args(args: PackedStringArray) -> Dictionary:
 		"outdated": [],
 		"screenshot": "",
 		"screenshot_delay": "8",
+		"view": "stage",
+		"hud": "on",
 	}
 	var i := 0
 	while i < args.size():

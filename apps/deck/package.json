@@ -1,0 +1,16 @@
+{
+  "name": "@studio/deck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Presentation: design, UI and team plan for the show studio (Slidev, static site for GitHub Pages)",
+  "scripts": {
+    "dev": "slidev --open false",
+    "build": "slidev build",
+    "export": "slidev export --output dist/show-studio.pdf"
+  },
+  "devDependencies": {
+    "@slidev/cli": "52.14.1",
+    "@slidev/theme-default": "0.25.0"
+  }
+}
