@@ -887,13 +887,13 @@ layout: center
 <Rise :delay="660">
   <div class="grid grid-cols-3 gap-3 mt-4">
     <div class="glass !p-3 flex items-center gap-3"><span class="step-n">1</span><p><b>Week 0</b> · tech lead, embedded real-time engineer</p></div>
-    <div class="glass !p-3 flex items-center gap-3"><span class="step-n">2</span><p><b>Week 2</b> · 3D / WebGL engineer, backend / cloud engineer</p></div>
-    <div class="glass !p-3 flex items-center gap-3"><span class="step-n">3</span><p><b>Week 4</b> · frontend engineer, robotics / simulation engineer</p></div>
+    <div class="glass !p-3 flex items-center gap-3"><span class="step-n">2</span><p><b>Week 2</b> · robotics / simulation engineer, backend / cloud engineer</p></div>
+    <div class="glass !p-3 flex items-center gap-3"><span class="step-n">3</span><p><b>Week 4</b> · 3D / WebGL engineer, frontend engineer</p></div>
   </div>
 </Rise>
 
 <!--
-DRAFT: to confirm. Three surfaces (studio, cloud, edge) each need a senior owner; one staff engineer guards the contracts all three share.
+DRAFT: to confirm. Three surfaces (studio, cloud, edge) each need a senior owner; one staff engineer guards the contracts all three share. Hiring order follows the critical path: hardware people first (the test bay is due in week 4), studio last because the prototype studio already works.
 -->
 
 ---
@@ -902,24 +902,24 @@ DRAFT: to confirm. Three surfaces (studio, cloud, edge) each need a senior owner
 <Rise :delay="80"><h1>Hardware in six weeks, <span class="serif grad">a park in three months</span></h1></Rise>
 
 <div class="relative mt-7">
-  <div class="grid grid-cols-6 text-[0.58rem] faint mb-2">
-    <span>Month 1</span><span>Month 2</span><span>Month 3</span><span>Month 4</span><span>Month 5</span><span>Month 6</span>
+  <div class="grid grid-cols-12 gap-2 text-[0.58rem] faint mb-2">
+    <span class="col-span-2 border-l border-white/15 pl-1.5">Month 1</span><span class="col-span-2 border-l border-white/15 pl-1.5">Month 2</span><span class="col-span-2 border-l border-white/15 pl-1.5">Month 3</span><span class="col-span-2 border-l border-white/15 pl-1.5">Month 4</span><span class="col-span-2 border-l border-white/15 pl-1.5">Month 5</span><span class="col-span-2 border-l border-white/15 pl-1.5">Month 6</span>
   </div>
   <div class="grid grid-cols-12 gap-2">
     <div v-click class="col-span-3 glass lit">
       <div class="kicker !mb-1">Weeks 1–6</div>
       <h3>Thin slice</h3>
-      <p>Rust agent on one real controller; a show published, signed, deployed and played on the <b>test bay</b></p>
+      <p>Controllers ordered in week 0; Rust agent on one; a show published, signed, deployed and played on the <b>test bay</b></p>
     </div>
     <div v-click class="col-span-3 glass">
       <div class="kicker !mb-1">Weeks 7–13</div>
       <h3>Pilot attraction</h3>
-      <p>Lights, audio, sensors, edge gateway, console; <b>shadow mode</b> in week 10, <b>guests</b> by week 13</p>
+      <p>Lights, audio, sensors, edge gateway, console; <b>shadow mode</b> from week 9, <b>guest&#8209;ready</b> by week 13</p>
     </div>
     <div v-click class="col-span-6 glass">
       <div class="kicker !mb-1">Months 4–6</div>
       <h3>Production</h3>
-      <p>Several shows and swap, more parks and tenants, SSO, alerting, staged OTA. Every release goes simulator → test bay → park</p>
+      <p>Second park and tenant, several shows and swap, SSO, alerting, staged OTA. Every release goes simulator → test bay → park</p>
     </div>
   </div>
   <div class="flow mt-3"></div>
@@ -927,8 +927,8 @@ DRAFT: to confirm. Three surfaces (studio, cloud, edge) each need a senior owner
 
 <div class="grid grid-cols-3 gap-4 mt-5">
   <Rise :delay="200"><div class="glass !p-3 flex items-center gap-3"><span class="dot pulse"></span><p><b>Week 6</b> · a show runs on real hardware</p></div></Rise>
-  <Rise :delay="300"><div class="glass !p-3 flex items-center gap-3"><span class="dot pulse"></span><p><b>Month 3</b> · pilot live with guests</p></div></Rise>
-  <Rise :delay="400"><div class="glass !p-3 flex items-center gap-3"><span class="dot pulse"></span><p><b>Month 6</b> · several parks in production</p></div></Rise>
+  <Rise :delay="300"><div class="glass !p-3 flex items-center gap-3"><span class="dot pulse"></span><p><b>Month 3</b> · pilot ready for guests</p></div></Rise>
+  <Rise :delay="400"><div class="glass !p-3 flex items-center gap-3"><span class="dot pulse"></span><p><b>Month 6</b> · a second park live</p></div></Rise>
 </div>
 
 <Rise :delay="500">
@@ -940,7 +940,7 @@ DRAFT: to confirm. Three surfaces (studio, cloud, edge) each need a senior owner
 </Rise>
 
 <!--
-DRAFT: to confirm. Incremental, not "everything on first release": each phase ends with something a park can use. Hardware in the loop by week 6 because that's where the surprises are. The pilot date depends on the park's safety acceptance; that's why the risk assessment starts in week 1.
+DRAFT: to confirm. Incremental, not "everything on first release": each phase ends with something a park can use. Hardware in the loop by week 6 because that's where the surprises are; controllers are ordered in week 0 because drive and safety-PLC lead times can eat the first month. Week 13 is "ready for guests": the opening date belongs to the park's safety acceptance, which is why the risk assessment starts in week 1. Month 6 is a second park, not a fleet: parks need their figures installed, which we don't control.
 -->
 ---
 
